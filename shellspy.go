@@ -1,7 +1,13 @@
 package shellspy
 
-import "os/exec"
+import (
+	"os/exec"
+	"strings"
+)
 
 func CommandFromString(s string) (*exec.Cmd, error) {
-	return exec.Command("ls", "-l"), nil
+	commands := strings.Split(s, " ")
+	path := commands[0]
+	args := commands[1:]
+	return exec.Command(path, args...), nil
 }
