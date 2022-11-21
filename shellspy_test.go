@@ -15,8 +15,8 @@ func TestCommandFromString_ConvertsStringIntoExecutableCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := exec.Command("ls", "-l")
-	if !cmp.Equal(got, want) {
-		t.Errorf("got %v, want %v", got, want)
+	if !cmp.Equal(got, want, cmp.AllowUnexported(exec.Cmd{})) {
+		t.Fatalf(cmp.Diff(got, want, cmp.AllowUnexported(exec.Cmd{})))
 	}
 
 }
