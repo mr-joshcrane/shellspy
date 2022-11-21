@@ -10,13 +10,10 @@ import (
 
 func TestCommandFromString_ConvertsStringIntoExecutableCmd(t *testing.T) {
 	t.Parallel()
-	got, err := shellspy.CommandFromString("ls -l")
-	if err != nil {
-		t.Fatal(err)
-	}
+	got := shellspy.CommandFromString("ls -l")
+
 	want := exec.Command("ls", "-l")
 	if !cmp.Equal(got, want, cmp.AllowUnexported(exec.Cmd{})) {
 		t.Fatalf(cmp.Diff(got, want, cmp.AllowUnexported(exec.Cmd{})))
 	}
-
 }
