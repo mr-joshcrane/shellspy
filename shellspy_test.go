@@ -17,3 +17,13 @@ func TestCommandFromString_ConvertsStringIntoExecutableCmd(t *testing.T) {
 		t.Fatalf(cmp.Diff(got, want, cmp.AllowUnexported(exec.Cmd{})))
 	}
 }
+
+func TestCommandFromString_WithNoArgsConvertsToExecutableCmd(t *testing.T) {
+	t.Parallel()
+	got := shellspy.CommandFromString("echo")
+
+	want := exec.Command("echo")
+	if !cmp.Equal(got, want, cmp.AllowUnexported(exec.Cmd{})) {
+		t.Fatalf(cmp.Diff(got, want, cmp.AllowUnexported(exec.Cmd{})))
+	}
+}
