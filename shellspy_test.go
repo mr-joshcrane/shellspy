@@ -1,60 +1,62 @@
 package shellspy_test
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/mr-joshcrane/shellspy"
 )
 
-func TestCommandFromString_ConvertsStringIntoExecutableCmd(t *testing.T) {
+func TestCommandFromString_(t *testing.T) {
 	t.Parallel()
-	got := shellspy.CommandFromString("ls -l").Args
-	want := []string{"ls", "-l"}
-	if !cmp.Equal(want, got) {
-		t.Fatalf(cmp.Diff(want, got))
+	cases := map[string]struct {
+		input string
+		want  []string
+	}{
+		"converts string into executable cmd": {
+			input: "ls -l",
+			want:  []string{"ls", "-l"},
+		},
+		"with no args converts to executable cmd": {
+			input: "echo",
+			want:  []string{"echo"},
+		},
+		"does not split quoted arguments": {
+			input: "cat 'folder/my file'",
+			want:  []string{"cat", "folder/my file"},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			cmd, err := shellspy.CommandFromString(tc.input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := cmd.Args
+			if !cmp.Equal(tc.want, got) {
+				t.Fatal(cmp.Diff(tc.want, got))
+			}
+		})
 	}
 }
 
-func TestCommandFromString_WithNoArgsConvertsToExecutableCmd(t *testing.T) {
+func TestCommandFromString_WithEmptyStringReturnsError(t *testing.T) {
 	t.Parallel()
-	got := shellspy.CommandFromString("echo").Args
-
-	want := []string{"echo"}
-	if !cmp.Equal(want, got) {
-		t.Fatalf(cmp.Diff(want, got))
+	_, err := shellspy.CommandFromString("")
+	if err == nil {
+		t.Fatal(err)
 	}
 }
 
-func TestCommandFromString_WithEmptyStringReturnsEmptyCommand(t *testing.T) {
-	t.Parallel()
-	got := shellspy.CommandFromString("").Args
-	want := []string{""}
-	if !cmp.Equal(want, got) {
-		t.Fatalf(cmp.Diff(want, got))
-	}
-}
+// func TestSpySession_StartsALoopThatTerminatesGivenExitFollowedByNewLine(t *testing.T) {
+// 	t.Parallel()
+// 	input := bytes.NewBufferString("echo 'one'\necho 'exit'\nexit\n")
+// 	buf := bytes.NewBuffer([]byte{})
+// 	shellspy.SpySession(input, buf)
+// 	got := buf.String()
+// 	want := "> echo 'one'\none\n\n> echo 'exit\n\nexit\n>exit\n"
+// 	if want != got {
+// 		t.Fatalf(cmp.Diff(want, got))
+// 	}
 
-
-func TestCommandFromString_WithSingleQuotesEscapedCorrectly(t *testing.T) {
-	t.Parallel()
-	got := shellspy.CommandFromString("cat 'folder/my file'").Args
-	want := []string{"cat", "folder/my file"}
-	if !cmp.Equal(want, got) {
-		t.Fatalf(cmp.Diff(want, got))
-	}
-}
-
-func TestSpySession_StartsALoopThatTerminatesGivenExitFollowedByNewLine(t *testing.T) {
-	t.Parallel()
-	input := bytes.NewBufferString("echo 'one'\necho 'exit'\nexit\n")
-	buf := bytes.NewBuffer([]byte{})
-	shellspy.SpySession(input, buf)
-	got := buf.String()
-	want := "> echo 'one'\none\n\n> echo 'exit\n\nexit\n>exit\n"
-	if want != got {
-		t.Fatalf(cmp.Diff(want, got))
-	}
-
-}
+// }
