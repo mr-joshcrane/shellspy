@@ -27,6 +27,25 @@ func TestCommandFromString_WithNoArgsConvertsToExecutableCmd(t *testing.T) {
 	}
 }
 
+func TestCommandFromString_WithEmptyStringReturnsEmptyCommand(t *testing.T) {
+	t.Parallel()
+	got := shellspy.CommandFromString("").Args
+	want := []string{""}
+	if !cmp.Equal(want, got) {
+		t.Fatalf(cmp.Diff(want, got))
+	}
+}
+
+
+func TestCommandFromString_WithSingleQuotesEscapedCorrectly(t *testing.T) {
+	t.Parallel()
+	got := shellspy.CommandFromString("cat 'folder/my file'").Args
+	want := []string{"cat", "folder/my file"}
+	if !cmp.Equal(want, got) {
+		t.Fatalf(cmp.Diff(want, got))
+	}
+}
+
 func TestSpySession_StartsALoopThatTerminatesGivenExitFollowedByNewLine(t *testing.T) {
 	t.Parallel()
 	input := bytes.NewBufferString("echo 'one'\necho 'exit'\nexit\n")
