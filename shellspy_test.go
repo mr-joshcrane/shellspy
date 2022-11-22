@@ -2,7 +2,6 @@ package shellspy_test
 
 import (
 	"bytes"
-	"os/exec"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -11,21 +10,20 @@ import (
 
 func TestCommandFromString_ConvertsStringIntoExecutableCmd(t *testing.T) {
 	t.Parallel()
-	got := shellspy.CommandFromString("ls -l")
-
-	want := exec.Command("ls", "-l")
-	if !cmp.Equal(got, want, cmp.AllowUnexported(exec.Cmd{})) {
-		t.Fatalf(cmp.Diff(got, want, cmp.AllowUnexported(exec.Cmd{})))
+	got := shellspy.CommandFromString("ls -l").Args
+	want := []string{"ls", "-l"}
+	if !cmp.Equal(want, got) {
+		t.Fatalf(cmp.Diff(want, got))
 	}
 }
 
 func TestCommandFromString_WithNoArgsConvertsToExecutableCmd(t *testing.T) {
 	t.Parallel()
-	got := shellspy.CommandFromString("echo")
+	got := shellspy.CommandFromString("echo").Args
 
-	want := exec.Command("echo")
-	if !cmp.Equal(got, want, cmp.AllowUnexported(exec.Cmd{})) {
-		t.Fatalf(cmp.Diff(got, want, cmp.AllowUnexported(exec.Cmd{})))
+	want := []string{"echo"}
+	if !cmp.Equal(want, got) {
+		t.Fatalf(cmp.Diff(want, got))
 	}
 }
 
