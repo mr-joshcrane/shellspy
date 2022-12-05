@@ -22,5 +22,4 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 }
 
 func SpySession(r io.Reader, w io.Writer) {
-
 }
