@@ -3,8 +3,8 @@ package shellspy_test
 import (
 	"bytes"
 	"io"
+	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/mr-joshcrane/shellspy"
@@ -51,21 +51,51 @@ func TestCommandFromString_WithEmptyStringReturnsError(t *testing.T) {
 	}
 }
 
-func TestSpySession_DoesntTerminateWithoutTerminationSignal(t *testing.T) {
+func TestSpySession_ReadsUserInputToCompletion(t *testing.T) {
 	t.Parallel()
-	input := &bytes.Buffer{}
-	loops := make(chan bool)
-	go func() {
-		shellspy.SpySession(input, io.Discard)
-		loops <- false
-	}()
-
-	go func() {
-		time.Sleep(3 * time.Second)
-		loops <- true
-	}()
-
-	if !<-loops {
-		t.Fatal("SpySession terminated without termination signal")
+	input := strings.NewReader("test input one\ntest input two\ntest input three\n")
+	shellspy.SpySession(input, io.Discard)
+	contents, err := io.ReadAll(input)
+	if err != nil {
+		t.Fatal(err)
 	}
+	if len(contents) != 0 {
+		t.Fatalf("didn't expect any content left in buffer, but got %q", contents)
+	}
+}
+
+func TestSpySession_(t *testing.T) {
+	t.Parallel()
+	input := strings.NewReader("echo one\necho two\necho three\n")
+	buf := &bytes.Buffer{}
+	shellspy.SpySession(input, buf)
+	want := "$ one\n$ two\n$ three\n$ "
+	got := buf.String()
+	if want != got {
+		t.Fatal(cmp.Diff(want, got))
+	}
+}
+
+func TestSpySession_PrintsErrorsForFailedCommands(t *testing.T) {
+	t.Parallel()
+	input := strings.NewReader("nonexistent command\n")
+	buf := &bytes.Buffer{}
+	shellspy.SpySession(input, buf)
+	want := "$ exec: \"nonexistent\": executable file not found in $PATH\n$ "
+	got := buf.String()
+	if want != got {
+		t.Fatal(cmp.Diff(want, got))
+	}
+}
+
+func TestSpySession_PrintsErrorsForInvalidCommands(t *testing.T) {
+	input := strings.NewReader("'''\n\n")
+	buf := &bytes.Buffer{}
+	shellspy.SpySession(input, buf)
+	want := "$ unbalanced quotes or backslashes in [''']\n$ \n$ "
+	got := buf.String()
+	if want != got {
+		t.Fatal(cmp.Diff(want, got))
+	}
+
 }
