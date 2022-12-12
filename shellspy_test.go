@@ -99,3 +99,21 @@ func TestSpySession_PrintsErrorsForInvalidCommands(t *testing.T) {
 	}
 
 }
+
+func TestSpySession_ProducesTranscriptOfSession(t *testing.T) {
+	t.Parallel()
+	input := strings.NewReader("echo one\necho two\necho three\n")
+	buf := &bytes.Buffer{}
+	shellspy.SpySession(input, io.Discard, buf)
+	want := `$ echo one
+	one
+	$ echo two
+	two
+	$ echo three
+	three
+	`
+	got := buf.String()
+	if want != got {
+		t.Fatal(cmp.Diff(want, got))
+	}
+}
