@@ -64,7 +64,7 @@ func TestSpySession_ReadsUserInputToCompletion(t *testing.T) {
 	}
 }
 
-func TestSpySession_(t *testing.T) {
+func TestSpySession_ExecutesCommandsAndOutputsResults(t *testing.T) {
 	t.Parallel()
 	input := strings.NewReader("echo one\necho two\necho three\n")
 	buf := &bytes.Buffer{}
@@ -106,12 +106,12 @@ func TestSpySession_ProducesTranscriptOfSession(t *testing.T) {
 	buf := &bytes.Buffer{}
 	shellspy.SpySession(input, io.Discard, buf)
 	want := `$ echo one
-	one
-	$ echo two
-	two
-	$ echo three
-	three
-	`
+one
+$ echo two
+two
+$ echo three
+three
+`
 	got := buf.String()
 	if want != got {
 		t.Fatal(cmp.Diff(want, got))

@@ -22,16 +22,20 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 	return exec.Command(path, args...), nil
 }
 
-func SpySession(r io.Reader, w io.Writer, transcript io.Writer) error {
-	fmt.Fprint(w, "$ ")
-
+func SpySession(r io.Reader, output io.Writer, transcript io.Writer) error {
+	w := io.MultiWriter(output, transcript)
+	fmt.Fprint(output, "$ ")
 	scan := bufio.NewScanner(r)
 	
 	for scan.Scan() {
-		cmd, err := CommandFromString(scan.Text())
+		line := scan.Text()
+		fmt.Fprintf(transcript, "$ %s\n", line)
+		cmd, err := CommandFromString(line)
 		if err != nil {
 			fmt.Fprintln(w, err)
+			fmt.Fprint(transcript , err)
 			fmt.Fprint(w, "$ ")
+			fmt.Fprint(transcript, "$ ")
 			continue
 		}
 		cmd.Stdout = w
@@ -39,8 +43,9 @@ func SpySession(r io.Reader, w io.Writer, transcript io.Writer) error {
 		err = cmd.Run()
 		if err != nil {
 			fmt.Fprintln(w, err)
+			fmt.Fprintln(transcript, err)
 		}
-		fmt.Fprint(w, "$ ")
+		fmt.Fprint(output, "$ ")
 	}
 	return scan.Err()
 }
