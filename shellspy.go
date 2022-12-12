@@ -22,7 +22,7 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 	return exec.Command(path, args...), nil
 }
 
-func SpySession(r io.Reader, w io.Writer) error {
+func SpySession(r io.Reader, w io.Writer, transcript io.Writer) error {
 	fmt.Fprint(w, "$ ")
 
 	scan := bufio.NewScanner(r)
