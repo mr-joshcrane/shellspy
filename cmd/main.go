@@ -11,5 +11,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	shellspy.SpySession(os.Stdin, os.Stdout, newFile)
+	session := shellspy.SpySession(os.Stdin, os.Stdout)
+	session.Transcript = newFile
+	session.Start()
 }
