@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 
 	"bitbucket.org/creachadair/shell"
@@ -34,6 +35,10 @@ func SpySession(r io.Reader, w io.Writer) Session {
 		output:     w,
 		Transcript: io.Discard,
 	}
+}
+
+func NewSpySession() Session {
+	return SpySession(os.Stdin, os.Stdout)
 }
 
 func (s Session) Start() error {
