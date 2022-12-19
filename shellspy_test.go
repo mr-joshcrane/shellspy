@@ -3,6 +3,8 @@ package shellspy_test
 import (
 	"bytes"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -117,5 +119,27 @@ three
 	got := buf.String()
 	if want != got {
 		t.Fatal(cmp.Diff(want, got))
+	}
+}
+
+func TestRemoteShell_(t *testing.T) {
+	t.Parallel()
+	want := "test"
+	r := bytes.NewBufferString(`{"body": "echo test"}`)
+	req := httptest.NewRequest(http.MethodGet, "/", r)
+	w := httptest.NewRecorder()
+	err := shellspy.RemoteShell(w, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := w.Result()
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	got := string(body)
+	if want != got {
+		t.Fatalf(cmp.Diff(want, got))
 	}
 }

@@ -2,10 +2,13 @@ package shellspy
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 
 	"bitbucket.org/creachadair/shell"
 )
@@ -64,4 +67,24 @@ func (s Session) Start() error {
 		fmt.Fprint(s.output, "$ ")
 	}
 	return scan.Err()
+}
+
+type Body struct {
+	Body string
+}
+
+func RemoteShell(w http.ResponseWriter, r *http.Request) error {
+	defer r.Body.Close()
+	body, _ := io.ReadAll(r.Body)
+
+	var result Body
+	err := json.Unmarshal(body, &result)
+	if err != nil {
+		return fmt.Errorf("error %s %q", body, err)
+	}
+	command := strings.NewReader(result.Body)
+	session := SpySession(command, w)
+	session.Transcript = os.Stdout
+	session.Start()
+	return nil
 }
