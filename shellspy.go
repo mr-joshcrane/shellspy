@@ -74,16 +74,19 @@ func ListenAndServe(addr string) error {
 		return err
 	}
 	defer listener.Close()
+	conn, err := listener.Accept()
+	if err != nil {
+		log.Fatalf("Error with client connection: %q", err)
+	}
 	for {
-		go func(listener net.Listener) {
-			conn, err := listener.Accept()
-			if err != nil {
-				log.Fatalf("Error with client connection: %q", err)
-			}
-			welcomeMsg := []byte("Welcome to the remote shell!\n")
+
+		go func(listener net.Conn) {
+			welcomeMsg := []byte("Welcome to the remote shell!")
 			conn.Write(welcomeMsg)
 			SpySession(conn, conn)
-		}(listener)
+			goodbyeMsg := []byte("Goodbye!")
+			conn.Write(goodbyeMsg)
+		}(conn)
 
 	}
 }

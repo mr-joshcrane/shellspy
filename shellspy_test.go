@@ -122,7 +122,7 @@ three
 	}
 }
 
-func TestRemoteShell(t *testing.T) {
+func TestRemoteShell_DisplaysWelcomeAndGoodbyeMessage(t *testing.T) {
 	t.Parallel()
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
@@ -149,7 +149,11 @@ func TestRemoteShell(t *testing.T) {
 	if scan.Scan() {
 		got = scan.Text()
 	}
-	want := "Welcome to the remote shell!"
+	conn.Write([]byte("exit"))
+	if scan.Scan() {
+		got += scan.Text()
+	}
+	want := "Welcome to the remote shell!Goodbye!"
 	if want != got {
 		t.Fatal(cmp.Diff(want, got))
 	}
