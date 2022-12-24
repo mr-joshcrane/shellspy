@@ -72,6 +72,7 @@ func ListenAndServe(addr string) error {
 	if err != nil {
 		return err
 	}
+	defer listener.Close()
 	for {
 		go func(listener net.Listener) {
 			_, _ = listener.Accept()
