@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -75,7 +76,12 @@ func ListenAndServe(addr string) error {
 	defer listener.Close()
 	for {
 		go func(listener net.Listener) {
-			_, _ = listener.Accept()
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Fatalf("Error with client connection: %q", err)
+			}
+			conn.Write([]byte("Welcome to the remote shell!\n"))
+			SpySession(conn, conn)
 		}(listener)
 
 	}
