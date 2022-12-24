@@ -1,10 +1,10 @@
 package shellspy_test
 
 import (
+	"bufio"
 	"bytes"
 	"io"
-	"net/http"
-	"net/http/httptest"
+	"net"
 	"strings"
 	"testing"
 
@@ -122,24 +122,36 @@ three
 	}
 }
 
-func TestRemoteShell_(t *testing.T) {
+func TestRemoteShell(t *testing.T) {
 	t.Parallel()
-	want := "test"
-	r := bytes.NewBufferString(`{"body": "echo test"}`)
-	req := httptest.NewRequest(http.MethodGet, "/", r)
-	w := httptest.NewRecorder()
-	err := shellspy.RemoteShell(w, req)
+	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	res := w.Result()
-	body, err := io.ReadAll(res.Body)
+	addr := listener.Addr().String()
+	listener.Close()
+	go func() {
+		err := shellspy.ListenAndServe(addr)
+		if err != nil {
+			panic(err)
+		}
+		if err == nil {
+			panic("expected server to block, but it exited with no error")
+		}
+	}()
+
+	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer res.Body.Close()
-	got := string(body)
+	got := ""
+	scan := bufio.NewScanner(conn)
+	if scan.Scan() {
+		got = scan.Text()
+	}
+	want := "Welcome to the remote shell!"
 	if want != got {
-		t.Fatalf(cmp.Diff(want, got))
+		t.Fatal(cmp.Diff(want, got))
 	}
+
 }

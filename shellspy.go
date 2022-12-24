@@ -2,13 +2,11 @@ package shellspy
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
+	"net"
 	"os"
 	"os/exec"
-	"strings"
 
 	"bitbucket.org/creachadair/shell"
 )
@@ -69,22 +67,15 @@ func (s Session) Start() error {
 	return scan.Err()
 }
 
-type Body struct {
-	Body string
-}
-
-func RemoteShell(w http.ResponseWriter, r *http.Request) error {
-	defer r.Body.Close()
-	body, _ := io.ReadAll(r.Body)
-
-	var result Body
-	err := json.Unmarshal(body, &result)
+func ListenAndServe(addr string) error {
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		return fmt.Errorf("error %s %q", body, err)
+		return err
 	}
-	command := strings.NewReader(result.Body)
-	session := SpySession(command, w)
-	session.Transcript = os.Stdout
-	session.Start()
-	return nil
+	for {
+		go func(listener net.Listener) {
+			_, _ = listener.Accept()
+		}(listener)
+
+	}
 }
