@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -50,6 +49,10 @@ func (s Session) Start() error {
 
 	for scan.Scan() {
 		line := scan.Text()
+		if line == "exit" {
+			fmt.Fprintf(w, "exit")
+			return nil
+		}
 		fmt.Fprintf(s.Transcript, "$ %s\n", line)
 		cmd, err := CommandFromString(line)
 		if err != nil {
@@ -74,17 +77,18 @@ func ListenAndServe(addr string) error {
 		return err
 	}
 	defer listener.Close()
-	conn, err := listener.Accept()
-	if err != nil {
-		log.Fatalf("Error with client connection: %q", err)
-	}
 	for {
-
-		go func(listener net.Conn) {
-			welcomeMsg := []byte("Welcome to the remote shell!")
+		conn, err := listener.Accept()
+		if err != nil {
+			return fmt.Errorf("Connection error: %q", err)
+		}
+		go func(conn net.Conn) {
+			welcomeMsg := []byte("Welcome to the remote shell!\n")
 			conn.Write(welcomeMsg)
-			SpySession(conn, conn)
-			goodbyeMsg := []byte("Goodbye!")
+			session := SpySession(conn, conn)
+			session.Transcript = os.Stdout
+			session.Start()
+			goodbyeMsg := []byte("Goodbye!\n")
 			conn.Write(goodbyeMsg)
 		}(conn)
 

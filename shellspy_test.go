@@ -149,11 +149,11 @@ func TestRemoteShell_DisplaysWelcomeAndGoodbyeMessage(t *testing.T) {
 	if scan.Scan() {
 		got = scan.Text()
 	}
-	conn.Write([]byte("exit"))
+	conn.Write([]byte("exit\n"))
 	if scan.Scan() {
 		got += scan.Text()
 	}
-	want := "Welcome to the remote shell!Goodbye!"
+	want := "Welcome to the remote shell!$ exitGoodbye!"
 	if want != got {
 		t.Fatal(cmp.Diff(want, got))
 	}
