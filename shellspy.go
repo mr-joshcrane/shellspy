@@ -80,7 +80,8 @@ func ListenAndServe(addr string) error {
 			if err != nil {
 				log.Fatalf("Error with client connection: %q", err)
 			}
-			conn.Write([]byte("Welcome to the remote shell!\n"))
+			welcomeMsg := []byte("Welcome to the remote shell!\n")
+			conn.Write(welcomeMsg)
 			SpySession(conn, conn)
 		}(listener)
 
