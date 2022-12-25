@@ -139,22 +139,18 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 			panic("expected server to block, but it exited with no error")
 		}
 	}()
-
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := ""
+	got := []string{}
 	scan := bufio.NewScanner(conn)
-	if scan.Scan() {
-		got = scan.Text()
-	}
 	conn.Write([]byte("exit\n"))
-	if scan.Scan() {
-		got += scan.Text()
+	for scan.Scan() {
+		got = append(got, scan.Text())
 	}
-	want := "Welcome to the remote shell!$ exitGoodbye!"
-	if want != got {
+	want := []string{"Welcome to the remote shell!", "$ exit", "Goodbye!"}
+	if !cmp.Equal(want, got) {
 		t.Fatal(cmp.Diff(want, got))
 	}
 

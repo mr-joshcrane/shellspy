@@ -50,8 +50,8 @@ func (s Session) Start() error {
 	for scan.Scan() {
 		line := scan.Text()
 		if line == "exit" {
-			fmt.Fprintf(w, "exit")
-			return nil
+			fmt.Fprintf(w, "exit\n")
+			return io.EOF
 		}
 		fmt.Fprintf(s.Transcript, "$ %s\n", line)
 		cmd, err := CommandFromString(line)
@@ -83,10 +83,10 @@ func ListenAndServe(addr string) error {
 			return fmt.Errorf("Connection error: %q", err)
 		}
 		go func(conn net.Conn) {
+			defer conn.Close()
 			welcomeMsg := []byte("Welcome to the remote shell!\n")
 			conn.Write(welcomeMsg)
 			session := SpySession(conn, conn)
-			session.Transcript = os.Stdout
 			session.Start()
 			goodbyeMsg := []byte("Goodbye!\n")
 			conn.Write(goodbyeMsg)
