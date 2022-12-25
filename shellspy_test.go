@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/mr-joshcrane/shellspy"
@@ -129,6 +130,7 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 		t.Fatal(err)
 	}
 	addr := listener.Addr().String()
+	time.Sleep(1 * time.Second)
 	listener.Close()
 	go func() {
 		err := shellspy.ListenAndServe(addr)
@@ -144,12 +146,15 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 		t.Fatal(err)
 	}
 	got := []string{}
-	scan := bufio.NewScanner(conn)
+	conn.Write([]byte("password\n"))
+	time.Sleep(1 * time.Second)
+
 	conn.Write([]byte("exit\n"))
+	scan := bufio.NewScanner(conn)
 	for scan.Scan() {
 		got = append(got, scan.Text())
 	}
-	want := []string{"Welcome to the remote shell!", "$ exit", "Goodbye!"}
+	want := []string{"Enter Password: ", "Welcome to the remote shell!", "$ exit", "Goodbye!"}
 	if !cmp.Equal(want, got) {
 		t.Fatal(cmp.Diff(want, got))
 	}

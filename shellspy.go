@@ -84,6 +84,15 @@ func ListenAndServe(addr string) error {
 		}
 		go func(conn net.Conn) {
 			defer conn.Close()
+			passwordMsg := []byte("Enter Password: \n")
+			conn.Write(passwordMsg)
+			scan := bufio.NewScanner(conn)
+			if scan.Scan() {
+				password := scan.Text()
+				if password != "password" {
+					return
+				}
+			}
 			welcomeMsg := []byte("Welcome to the remote shell!\n")
 			conn.Write(welcomeMsg)
 			session := SpySession(conn, conn)
