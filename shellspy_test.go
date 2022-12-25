@@ -122,7 +122,7 @@ three
 	}
 }
 
-func TestRemoteShell_DisplaysWelcomeAndGoodbyeMessage(t *testing.T) {
+func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.T) {
 	t.Parallel()
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
