@@ -129,9 +129,8 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr := listener.Addr().String()
-	time.Sleep(1 * time.Second)
 	listener.Close()
+	addr := listener.Addr().String()
 	go func() {
 		err := shellspy.ListenAndServe(addr)
 		if err != nil {
@@ -141,7 +140,7 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 			panic("expected server to block, but it exited with no error")
 		}
 	}()
-	conn, err := net.Dial("tcp", addr)
+	conn, err := shellspy.RetryDial(5, addr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,5 +157,4 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	if !cmp.Equal(want, got) {
 		t.Fatal(cmp.Diff(want, got))
 	}
-
 }

@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"time"
 
 	"bitbucket.org/creachadair/shell"
 )
@@ -71,8 +72,30 @@ func (s Session) Start() error {
 	return scan.Err()
 }
 
+func RetryDial(retries int, addr string) (net.Conn, error) {
+	for i := 0; i < retries; i++ {
+		conn, err := net.Dial("tcp", addr)
+		if err == nil {
+			return conn, nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return nil, fmt.Errorf("retried %d times, to dial but was unsuccessful", retries)
+}
+
+func retryListener(retries int, addr string) (net.Listener, error) {
+	for i := 0; i < retries; i++ {
+		listener, err := net.Listen("tcp", addr)
+		if err == nil {
+			return listener, nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return nil, fmt.Errorf("retried %d times to listen but was unsuccessful", retries)
+}
+
 func ListenAndServe(addr string) error {
-	listener, err := net.Listen("tcp", addr)
+	listener, err := retryListener(5, addr)
 	if err != nil {
 		return err
 	}
