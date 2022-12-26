@@ -3,6 +3,7 @@ package shellspy_test
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"net"
 	"strings"
@@ -132,7 +133,7 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	listener.Close()
 	addr := listener.Addr().String()
 	go func() {
-		err := shellspy.ListenAndServe(addr)
+		err := shellspy.ListenAndServe(addr, "password")
 		if err != nil {
 			panic(err)
 		}
@@ -145,10 +146,10 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 		t.Fatal(err)
 	}
 	got := []string{}
-	conn.Write([]byte("password\n"))
+	fmt.Fprintln(conn, "password")
 	time.Sleep(1 * time.Second)
+	fmt.Fprintln(conn, "exit")
 
-	conn.Write([]byte("exit\n"))
 	scan := bufio.NewScanner(conn)
 	for scan.Scan() {
 		got = append(got, scan.Text())

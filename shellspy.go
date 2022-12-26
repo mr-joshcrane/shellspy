@@ -94,7 +94,7 @@ func retryListener(retries int, addr string) (net.Listener, error) {
 	return nil, fmt.Errorf("retried %d times to listen but was unsuccessful", retries)
 }
 
-func ListenAndServe(addr string) error {
+func ListenAndServe(addr string, password string) error {
 	listener, err := retryListener(5, addr)
 	if err != nil {
 		return err
@@ -107,8 +107,7 @@ func ListenAndServe(addr string) error {
 		}
 		go func(conn net.Conn) {
 			defer conn.Close()
-			passwordMsg := []byte("Enter Password: \n")
-			conn.Write(passwordMsg)
+			fmt.Fprintln(conn, "Enter Password: ")
 			scan := bufio.NewScanner(conn)
 			if scan.Scan() {
 				password := scan.Text()
@@ -116,12 +115,10 @@ func ListenAndServe(addr string) error {
 					return
 				}
 			}
-			welcomeMsg := []byte("Welcome to the remote shell!\n")
-			conn.Write(welcomeMsg)
+			fmt.Fprintln(conn, "Welcome to the remote shell!")
 			session := SpySession(conn, conn)
 			session.Start()
-			goodbyeMsg := []byte("Goodbye!\n")
-			conn.Write(goodbyeMsg)
+			fmt.Fprintln(conn, "Goodbye!")
 		}(conn)
 
 	}
