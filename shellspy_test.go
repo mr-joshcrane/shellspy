@@ -145,8 +145,14 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 		t.Fatal(err)
 	}
 	got := []string{}
-	fmt.Fprintln(conn, "password")
-	fmt.Fprintln(conn, "exit")
+	_, err = fmt.Fprintln(conn, "password")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = fmt.Fprintln(conn, "exit")
+	if err != nil {
+		t.Fatal(err)
+	}
 	scan := bufio.NewScanner(conn)
 	for scan.Scan() {
 		got = append(got, scan.Text())
