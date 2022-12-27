@@ -8,6 +8,7 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/mr-joshcrane/shellspy"
@@ -144,6 +145,7 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
+	conn.SetDeadline(1 * time.Second)
 	got := []string{}
 	_, err = fmt.Fprintln(conn, "password")
 	if err != nil {
