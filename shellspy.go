@@ -110,16 +110,23 @@ func ListenAndServe(addr string, password string) error {
 			return fmt.Errorf("Connection error: %q", err)
 		}
 		go func(conn net.Conn) {
-			fmt.Fprintln(conn, "Enter Password: ")
+			_, err := fmt.Fprintln(conn, "Enter Password: ")
+			if err != nil {
+				panic(err)
+			}
 			scan := bufio.NewScanner(conn)
 			if scan.Scan() {
 				password := scan.Text()
 				if password != password {
+					fmt.Fprintln(conn, "Bad password")
 					conn.Close()
 					return
 				}
 			}
-			fmt.Fprintln(conn, "Welcome to the remote shell!")
+			_, err = fmt.Fprintln(conn, "Welcome to the remote shell!")
+			if err != nil {
+				panic(err)
+			}
 			session := SpySession(conn, conn)
 			session.Transcript = log
 			session.Start()
