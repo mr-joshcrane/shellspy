@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"time"
 
 	"bitbucket.org/creachadair/shell"
 )
@@ -72,64 +71,27 @@ func (s Session) Start() error {
 	return scan.Err()
 }
 
-func RetryDial(retries int, addr string) (net.Conn, error) {
-	for i := 0; i < retries; i++ {
-		conn, err := net.Dial("tcp", addr)
-		if err == nil {
-			return conn, nil
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	return nil, fmt.Errorf("retried %d times, to dial but was unsuccessful", retries)
-}
-
-func retryListener(retries int, addr string) (net.Listener, error) {
-	for i := 0; i < retries; i++ {
-		listener, err := net.Listen("tcp", addr)
-		if err == nil {
-			return listener, nil
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	return nil, fmt.Errorf("retried %d times to listen but was unsuccessful", retries)
-}
-
-func ListenAndServe(addr string, password string) error {
-	listener, err := retryListener(5, addr)
+func ListenAndServe(addr string) error {
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
 	defer listener.Close()
 	for {
-		log, err := os.Create("log.txt")
-		if err != nil {
-			return fmt.Errorf("Error saving log: %q", err)
-		}
 		conn, err := listener.Accept()
 		if err != nil {
 			return fmt.Errorf("Connection error: %q", err)
 		}
 		go func(conn net.Conn) {
-			_, err := fmt.Fprintln(conn, "Enter Password: ")
-			if err != nil {
-				panic(err)
-			}
-			scan := bufio.NewScanner(conn)
-			if scan.Scan() {
-				password := scan.Text()
-				if password != password {
-					fmt.Fprintln(conn, "Bad password")
-					conn.Close()
-					return
-				}
-			}
 			_, err = fmt.Fprintln(conn, "Welcome to the remote shell!")
 			if err != nil {
 				panic(err)
 			}
 			session := SpySession(conn, conn)
-			session.Transcript = log
-			session.Start()
+			err = session.Start()
+			if err != nil && err != io.EOF {
+				panic(err)
+			}
 			fmt.Fprintln(conn, "Goodbye!")
 			conn.Close()
 		}(conn)

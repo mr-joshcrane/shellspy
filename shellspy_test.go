@@ -130,10 +130,14 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	listener.Close()
+	err = listener.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(50 * time.Millisecond)
 	addr := listener.Addr().String()
 	go func() {
-		err := shellspy.ListenAndServe(addr, "password")
+		err := shellspy.ListenAndServe(addr)
 		if err != nil {
 			panic(err)
 		}
@@ -141,16 +145,13 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 			panic("expected server to block, but it exited with no error")
 		}
 	}()
-	conn, err := shellspy.RetryDial(5, addr)
+	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	conn.SetDeadline(1 * time.Second)
+	deadline := time.Now().Add(time.Second)
+	conn.SetDeadline(deadline)
 	got := []string{}
-	_, err = fmt.Fprintln(conn, "password")
-	if err != nil {
-		t.Fatal(err)
-	}
 	_, err = fmt.Fprintln(conn, "exit")
 	if err != nil {
 		t.Fatal(err)
@@ -159,7 +160,7 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	for scan.Scan() {
 		got = append(got, scan.Text())
 	}
-	want := []string{"Enter Password: ", "Welcome to the remote shell!", "$ exit", "Goodbye!"}
+	want := []string{"Welcome to the remote shell!", "$ exit", "Goodbye!"}
 	if !cmp.Equal(want, got) {
 		t.Fatal(cmp.Diff(want, got))
 	}
