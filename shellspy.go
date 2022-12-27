@@ -101,24 +101,30 @@ func ListenAndServe(addr string, password string) error {
 	}
 	defer listener.Close()
 	for {
+		log, err := os.Create("log.txt")
+		if err != nil {
+			return fmt.Errorf("Error saving log: %q", err)
+		}
 		conn, err := listener.Accept()
 		if err != nil {
 			return fmt.Errorf("Connection error: %q", err)
 		}
 		go func(conn net.Conn) {
-			defer conn.Close()
 			fmt.Fprintln(conn, "Enter Password: ")
 			scan := bufio.NewScanner(conn)
 			if scan.Scan() {
 				password := scan.Text()
-				if password != "password" {
+				if password != password {
+					conn.Close()
 					return
 				}
 			}
 			fmt.Fprintln(conn, "Welcome to the remote shell!")
 			session := SpySession(conn, conn)
+			session.Transcript = log
 			session.Start()
 			fmt.Fprintln(conn, "Goodbye!")
+			conn.Close()
 		}(conn)
 
 	}

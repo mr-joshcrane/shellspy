@@ -147,10 +147,10 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	}
 	got := []string{}
 	fmt.Fprintln(conn, "password")
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 	fmt.Fprintln(conn, "exit")
-
 	scan := bufio.NewScanner(conn)
+	time.Sleep(100 * time.Millisecond)
 	for scan.Scan() {
 		got = append(got, scan.Text())
 	}
