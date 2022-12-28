@@ -187,7 +187,7 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	}
 }
 
-func TestRemoteShell_ClosesSessionOnIncorrectPassword(t *testing.T) {
+func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
 	t.Parallel()
 	serverR, clientW := io.Pipe()
 	clientR, serverW := io.Pipe()
