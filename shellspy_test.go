@@ -220,3 +220,28 @@ func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
 		t.Fatal("Session should be closed!")
 	}
 }
+func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
+	t.Parallel()
+	serverR, clientW := io.Pipe()
+	clientR, serverW := io.Pipe()
+	session := shellspy.SpySession(serverR, serverW)
+	scan := bufio.NewScanner(clientR)
+	authenticated := make(chan bool)
+	go func() { authenticated <- session.Auth() }()
+	go func() { time.Sleep(3 * time.Second); panic("Timed out!") }()
+	for scan.Scan() {
+		prompt := scan.Text()
+		want := "Enter Password: "
+		if !cmp.Equal(prompt, want) {
+			t.Fatalf(cmp.Diff(prompt, want))
+		}
+		break
+	}
+	fmt.Fprintln(clientW, "password")
+	if !<-authenticated {
+		t.Fatal("Should be authenticated!")
+	}
+	if session.Closed {
+		t.Fatal("Session should be open!")
+	}
+}
