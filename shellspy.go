@@ -28,6 +28,7 @@ type Session struct {
 	r          io.Reader
 	output     io.Writer
 	Transcript io.Writer
+	Closed     bool
 }
 
 func SpySession(r io.Reader, w io.Writer) Session {
@@ -35,11 +36,17 @@ func SpySession(r io.Reader, w io.Writer) Session {
 		r:          r,
 		output:     w,
 		Transcript: io.Discard,
+		Closed:     false,
 	}
 }
 
 func NewSpySession() Session {
 	return SpySession(os.Stdin, os.Stdout)
+}
+
+func (s Session) Auth() bool {
+	fmt.Fprintln(s.output, "Enter P ward :")
+	return false
 }
 
 func (s Session) Start() error {

@@ -192,24 +192,26 @@ func TestRemoteShell_ClosesSessionOnIncorrectPassword(t *testing.T) {
 	serverR, clientW := io.Pipe()
 	clientR, serverW := io.Pipe()
 	session := shellspy.SpySession(serverR, serverW)
+	scan := bufio.NewScanner(clientR)
 	authenticated := make(chan bool)
-	go func() { authenticated <- session.Auth }()
-	prompt, err := io.ReadAll(clientR)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []byte("Enter Password: ")
-	if !cmp.Equal(prompt, want) {
-		t.Fatalf(cmp.Diff(prompt, want))
+	go func() { authenticated <- session.Auth() }()
+	go func() { time.Sleep(3 * time.Second); panic("Timed out!") }()
+	for scan.Scan() {
+		prompt := scan.Text()
+		want := []byte("Enter Password: ")
+		if !cmp.Equal(prompt, want) {
+			t.Fatalf(cmp.Diff(prompt, want))
+		}
+		break
 	}
 	fmt.Fprintln(clientW, "wrongpassword")
-	prompt, err = io.ReadAll(clientR)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want = []byte("Incorrect Password: Closing connection")
-	if !cmp.Equal(prompt, want) {
-		t.Fatal(cmp.Diff(prompt, want))
+	for scan.Scan() {
+		prompt := scan.Text()
+		want := []byte("Incorrect Password: Closing connection")
+		if !cmp.Equal(prompt, want) {
+			t.Fatal(cmp.Diff(prompt, want))
+		}
+		break
 	}
 	if <-authenticated {
 		t.Fatal("Should not be authenticated!")
