@@ -44,8 +44,19 @@ func NewSpySession() Session {
 	return SpySession(os.Stdin, os.Stdout)
 }
 
-func (s Session) Auth() bool {
-	fmt.Fprintln(s.output, "Enter P ward :")
+func (s *Session) Auth() bool {
+	serverPassword := "password"
+	fmt.Fprintln(s.output, "Enter Password: ")
+	scan := bufio.NewScanner(s.r)
+	for scan.Scan() {
+		userPassword := scan.Text()
+		if userPassword == serverPassword {
+			return true
+		}
+		break
+	}
+	fmt.Fprintln(s.output, "Incorrect Password: Closing connection")
+	s.Closed = true
 	return false
 }
 

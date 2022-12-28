@@ -198,7 +198,7 @@ func TestRemoteShell_ClosesSessionOnIncorrectPassword(t *testing.T) {
 	go func() { time.Sleep(3 * time.Second); panic("Timed out!") }()
 	for scan.Scan() {
 		prompt := scan.Text()
-		want := []byte("Enter Password: ")
+		want := "Enter Password: "
 		if !cmp.Equal(prompt, want) {
 			t.Fatalf(cmp.Diff(prompt, want))
 		}
@@ -207,7 +207,7 @@ func TestRemoteShell_ClosesSessionOnIncorrectPassword(t *testing.T) {
 	fmt.Fprintln(clientW, "wrongpassword")
 	for scan.Scan() {
 		prompt := scan.Text()
-		want := []byte("Incorrect Password: Closing connection")
+		want := "Incorrect Password: Closing connection"
 		if !cmp.Equal(prompt, want) {
 			t.Fatal(cmp.Diff(prompt, want))
 		}
