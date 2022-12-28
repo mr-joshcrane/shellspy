@@ -3,6 +3,7 @@ package shellspy_test
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -124,8 +125,7 @@ three
 	}
 }
 
-func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.T) {
-	t.Parallel()
+func setupRemoteServer(t *testing.T) string {
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
 		t.Fatal(err)
@@ -145,6 +145,27 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 			panic("expected server to block, but it exited with no error")
 		}
 	}()
+	return addr
+}
+
+func TestSpySession_TerminatesOnExitCommand(t *testing.T) {
+	t.Parallel()
+	r, w := io.Pipe()
+	session := shellspy.SpySession(r, w)
+	errChan := make(chan error)
+
+	go func() { errChan <- session.Start() }()
+	go func() { time.Sleep(time.Second); errChan <- errors.New("Session timed out") }()
+
+	done := <-errChan
+	if done != io.EOF {
+		t.Fatal("Expected session to be done but was not")
+	}
+}
+
+func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.T) {
+	t.Parallel()
+	addr := setupRemoteServer(t)
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		t.Fatal(err)
@@ -164,4 +185,16 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	if !cmp.Equal(want, got) {
 		t.Fatal(cmp.Diff(want, got))
 	}
+}
+
+func TestRemoteShell_ClosesSessionOnIncorrectPassword(t *testing.T) {
+	t.Parallel()
+	addr := setupRemoteServer(t)
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(time.Second)
+	conn.SetDeadline(deadline)
+
 }
