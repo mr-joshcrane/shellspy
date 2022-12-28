@@ -24,6 +24,15 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 	return exec.Command(path, args...), nil
 }
 
+type Password *string
+
+func NewPassword(pw string) Password {
+	if pw == "" {
+		return nil
+	}
+	return &pw
+}
+
 type Session struct {
 	r          io.Reader
 	output     io.Writer
@@ -44,13 +53,15 @@ func NewSpySession() Session {
 	return SpySession(os.Stdin, os.Stdout)
 }
 
-func (s *Session) Auth() bool {
-	serverPassword := "password"
+func (s *Session) Auth(serverPassword Password) bool {
+	if serverPassword == nil {
+		return true
+	}
 	fmt.Fprintln(s.output, "Enter Password: ")
 	scan := bufio.NewScanner(s.r)
 	for scan.Scan() {
 		userPassword := scan.Text()
-		if userPassword == serverPassword {
+		if userPassword == *serverPassword {
 			return true
 		}
 		break
@@ -89,7 +100,7 @@ func (s Session) Start() error {
 	return scan.Err()
 }
 
-func ListenAndServe(addr string) error {
+func ListenAndServe(addr string, serverPassword Password) error {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
@@ -101,17 +112,22 @@ func ListenAndServe(addr string) error {
 			return fmt.Errorf("Connection error: %q", err)
 		}
 		go func(conn net.Conn) {
+			defer conn.Close()
+			session := SpySession(conn, conn)
+			authenticated := session.Auth(serverPassword)
+			if !authenticated {
+				return
+			}
 			_, err = fmt.Fprintln(conn, "Welcome to the remote shell!")
 			if err != nil {
 				panic(err)
 			}
-			session := SpySession(conn, conn)
 			err = session.Start()
 			if err != nil && err != io.EOF {
 				panic(err)
 			}
 			fmt.Fprintln(conn, "Goodbye!")
-			conn.Close()
+			return
 		}(conn)
 
 	}

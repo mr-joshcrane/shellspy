@@ -137,7 +137,7 @@ func setupRemoteServer(t *testing.T) string {
 	time.Sleep(50 * time.Millisecond)
 	addr := listener.Addr().String()
 	go func() {
-		err := shellspy.ListenAndServe(addr)
+		err := shellspy.ListenAndServe(addr, shellspy.NewPassword(""))
 		if err != nil {
 			panic(err)
 		}
@@ -194,7 +194,7 @@ func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
 	session := shellspy.SpySession(serverR, serverW)
 	scan := bufio.NewScanner(clientR)
 	authenticated := make(chan bool)
-	go func() { authenticated <- session.Auth() }()
+	go func() { authenticated <- session.Auth(shellspy.NewPassword("password")) }()
 	go func() { time.Sleep(3 * time.Second); panic("Timed out!") }()
 	for scan.Scan() {
 		prompt := scan.Text()
@@ -227,7 +227,7 @@ func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
 	session := shellspy.SpySession(serverR, serverW)
 	scan := bufio.NewScanner(clientR)
 	authenticated := make(chan bool)
-	go func() { authenticated <- session.Auth() }()
+	go func() { authenticated <- session.Auth(shellspy.NewPassword("password")) }()
 	go func() { time.Sleep(3 * time.Second); panic("Timed out!") }()
 	for scan.Scan() {
 		prompt := scan.Text()
