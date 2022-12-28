@@ -151,12 +151,12 @@ func setupRemoteServer(t *testing.T) string {
 func TestSpySession_TerminatesOnExitCommand(t *testing.T) {
 	t.Parallel()
 	r, w := io.Pipe()
-	session := shellspy.SpySession(r, w)
+	session := shellspy.SpySession(r, io.Discard)
 	errChan := make(chan error)
 
 	go func() { errChan <- session.Start() }()
 	go func() { time.Sleep(time.Second); errChan <- errors.New("Session timed out") }()
-
+	fmt.Fprintln(w, "exit")
 	done := <-errChan
 	if done != io.EOF {
 		t.Fatal("Expected session to be done but was not")
