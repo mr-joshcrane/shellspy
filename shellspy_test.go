@@ -189,12 +189,32 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 
 func TestRemoteShell_ClosesSessionOnIncorrectPassword(t *testing.T) {
 	t.Parallel()
-	addr := setupRemoteServer(t)
-	conn, err := net.Dial("tcp", addr)
+	serverR, clientW := io.Pipe()
+	clientR, serverW := io.Pipe()
+	session := shellspy.SpySession(serverR, serverW)
+	authenticated := make(chan bool)
+	go func() { authenticated <- session.Auth }()
+	prompt, err := io.ReadAll(clientR)
 	if err != nil {
 		t.Fatal(err)
 	}
-	deadline := time.Now().Add(time.Second)
-	conn.SetDeadline(deadline)
-
+	want := []byte("Enter Password: ")
+	if !cmp.Equal(prompt, want) {
+		t.Fatalf(cmp.Diff(prompt, want))
+	}
+	fmt.Fprintln(clientW, "wrongpassword")
+	prompt, err = io.ReadAll(clientR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = []byte("Incorrect Password: Closing connection")
+	if !cmp.Equal(prompt, want) {
+		t.Fatal(cmp.Diff(prompt, want))
+	}
+	if <-authenticated {
+		t.Fatal("Should not be authenticated!")
+	}
+	if !session.Closed {
+		t.Fatal("Session should be closed!")
+	}
 }
