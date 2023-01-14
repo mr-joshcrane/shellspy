@@ -126,6 +126,7 @@ three
 }
 
 func setupRemoteServer(t *testing.T) string {
+	t.Helper()
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
 		t.Fatal(err)
@@ -137,7 +138,7 @@ func setupRemoteServer(t *testing.T) string {
 	time.Sleep(50 * time.Millisecond)
 	addr := listener.Addr().String()
 	go func() {
-		err := shellspy.ListenAndServe(addr, shellspy.NewPassword(""))
+		err := shellspy.ListenAndServe(addr, shellspy.NewPassword("correctPassword"))
 		if err != nil {
 			panic(err)
 		}
@@ -187,7 +188,7 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	}
 }
 
-func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
+func TestRemoteShell_AuthClosesSessionOnIncorrectPasswordOld(t *testing.T) {
 	t.Parallel()
 	serverR, clientW := io.Pipe()
 	clientR, serverW := io.Pipe()
@@ -220,6 +221,48 @@ func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
 		t.Fatal("Session should be closed!")
 	}
 }
+
+func setupConnection(t *testing.T, addr string) net.Conn {
+	t.Helper()
+	conn, err := net.Dial("tcp", addr)
+	for err != nil {
+		time.Sleep(50 * time.Millisecond)
+		conn, err = net.Dial("tcp", addr)
+	}
+	return conn
+}
+
+func readLine(t *testing.T, conn net.Conn) string {
+	t.Helper()
+	scan := bufio.NewScanner(conn)
+	if !scan.Scan() {
+		t.Fatalf("nothing to read from conn, scan.Err says %q", scan.Err())
+	}
+	return scan.Text()
+}
+
+func writeLine(t *testing.T, conn net.Conn, password string) {
+	t.Helper()
+	_, err := fmt.Fprintf(conn, password+"\n")
+	if err != nil {
+		t.Fatalf("attempted to write %s but got err %q", password, err)
+	}
+}
+
+func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
+	t.Parallel()
+	addr := setupRemoteServer(t)
+	conn := setupConnection(t, addr)
+	line := readLine(t, conn)
+	if line != "Enter Password: " {
+		t.Fatalf("wanted 'Enter Password: ', got %s", line)
+	}
+	writeLine(t, conn, "incorrectPassword")
+	readLine(t, conn)
+	writeLine(t, conn, "ls")
+
+}
+
 func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
 	t.Parallel()
 	serverR, clientW := io.Pipe()

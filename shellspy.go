@@ -127,8 +127,6 @@ func ListenAndServe(addr string, serverPassword Password) error {
 				panic(err)
 			}
 			fmt.Fprintln(conn, "Goodbye!")
-			return
 		}(conn)
-
 	}
 }
