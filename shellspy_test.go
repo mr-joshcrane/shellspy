@@ -194,40 +194,6 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	}
 }
 
-func TestRemoteShell_AuthClosesSessionOnIncorrectPasswordOld(t *testing.T) {
-	t.Parallel()
-	serverR, clientW := io.Pipe()
-	clientR, serverW := io.Pipe()
-	session := shellspy.SpySession(serverR, serverW)
-	scan := bufio.NewScanner(clientR)
-	authenticated := make(chan bool)
-	go func() { authenticated <- session.Auth(shellspy.NewPassword("password")) }()
-	go func() { time.Sleep(3 * time.Second); panic("Timed out!") }()
-	for scan.Scan() {
-		prompt := scan.Text()
-		want := "Enter Password: "
-		if !cmp.Equal(prompt, want) {
-			t.Fatalf(cmp.Diff(prompt, want))
-		}
-		break
-	}
-	fmt.Fprintln(clientW, "wrongpassword")
-	for scan.Scan() {
-		prompt := scan.Text()
-		want := "Incorrect Password: Closing connection"
-		if !cmp.Equal(prompt, want) {
-			t.Fatal(cmp.Diff(prompt, want))
-		}
-		break
-	}
-	if <-authenticated {
-		t.Fatal("Should not be authenticated!")
-	}
-	if !session.Closed {
-		t.Fatal("Session should be closed!")
-	}
-}
-
 func setupConnection(t *testing.T, addr string) net.Conn {
 	t.Helper()
 	conn, err := net.Dial("tcp", addr)
