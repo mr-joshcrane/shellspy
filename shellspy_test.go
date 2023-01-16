@@ -254,6 +254,17 @@ func writeLine(t *testing.T, conn net.Conn, password string) {
 	}
 }
 
+func waitForFailure(conn net.Conn) error {
+	for i := 0; i < 3; i++ {
+		_, err := fmt.Fprintf(conn, "echo 'Is pipe broken?'\n")
+		time.Sleep(50 * time.Millisecond)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
 	t.Parallel()
 	addr := setupRemoteServer(t, "correctPassword")
@@ -264,7 +275,10 @@ func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
 	}
 	writeLine(t, conn, "incorrectPassword")
 	readLine(t, conn)
-	writeLine(t, conn, "ls")
+	err := waitForFailure(conn)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
 
 }
 
