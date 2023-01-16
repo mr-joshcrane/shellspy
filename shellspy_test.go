@@ -139,7 +139,7 @@ func setupRemoteServer(t *testing.T, password string) string {
 	time.Sleep(50 * time.Millisecond)
 	addr := listener.Addr().String()
 	go func() {
-		err := shellspy.ListenAndServe(addr, shellspy.NewPassword("password"))
+		err := shellspy.ListenAndServe(addr, shellspy.NewPassword(password))
 		if err != nil {
 			panic(err)
 		}
@@ -283,26 +283,19 @@ func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
 
 func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
 	t.Parallel()
-	serverR, clientW := io.Pipe()
-	clientR, serverW := io.Pipe()
-	session := shellspy.SpySession(serverR, serverW)
-	scan := bufio.NewScanner(clientR)
-	authenticated := make(chan bool)
-	go func() { authenticated <- session.Auth(shellspy.NewPassword("password")) }()
-	go func() { time.Sleep(3 * time.Second); panic("Timed out!") }()
-	for scan.Scan() {
-		prompt := scan.Text()
-		want := "Enter Password: "
-		if !cmp.Equal(prompt, want) {
-			t.Fatalf(cmp.Diff(prompt, want))
-		}
-		break
+	addr := setupRemoteServer(t, "correctPassword")
+	conn := setupConnection(t, addr)
+	line := readLine(t, conn)
+	if line != "Enter Password: " {
+		t.Fatalf("wanted 'Enter Password: ', got %s", line)
 	}
-	fmt.Fprintln(clientW, "password")
-	if !<-authenticated {
-		t.Fatal("Should be authenticated!")
+	writeLine(t, conn, "correctPassword")
+	line = readLine(t, conn)
+	if line != "Welcome to the remote shell!" {
+		t.Fatalf("wanted 'Welcome to the remote shell!', got %s", line)
 	}
-	if session.Closed {
-		t.Fatal("Session should be open!")
+	err := waitForBrokenPipe(conn)
+	if err != nil {
+		t.Fatalf("expected no error, but got %q", err)
 	}
 }
