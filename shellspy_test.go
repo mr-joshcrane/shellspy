@@ -169,29 +169,24 @@ func TestSpySession_TerminatesOnExitCommand(t *testing.T) {
 func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.T) {
 	t.Parallel()
 	addr := setupRemoteServer(t, "password")
-	conn, err := net.Dial("tcp", addr)
+	conn := setupConnection(t, addr)
+	conn.SetDeadline(time.Now().Add(1 * time.Second))
+	line := readLine(t, conn)
+	if line != "Enter Password: " {
+		t.Fatalf("expected password prompt, but got %q", line)
+	}
+	writeLine(t, conn, "password")
+	line = readLine(t, conn)
+	if line != "Welcome to the remote shell!" {
+		t.Fatalf("expected welcome message, but got %q", line)
+	}
+	writeLine(t, conn, "exit")
+	contents, err := io.ReadAll(conn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = fmt.Fprintln(conn, "password")
-	if err != nil {
-		t.Fatal(err)
-	}
-	deadline := time.Now().Add(time.Second)
-	conn.SetDeadline(deadline)
-	got := []string{}
-
-	_, err = fmt.Fprintln(conn, "exit")
-	if err != nil {
-		t.Fatal(err)
-	}
-	scan := bufio.NewScanner(conn)
-	for scan.Scan() {
-		got = append(got, scan.Text())
-	}
-	want := []string{"Enter Password: ", "Welcome to the remote shell!", "$ exit", "Goodbye!"}
-	if !cmp.Equal(want, got) {
-		t.Fatal(cmp.Diff(want, got))
+	if string(contents) != "exit\nGoodbye!\n" {
+		t.Fatalf(cmp.Diff("exit\nGoodbye!\n", string(contents)))
 	}
 }
 
