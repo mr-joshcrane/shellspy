@@ -152,16 +152,17 @@ func setupRemoteServer(t *testing.T, password string) string {
 
 func TestSpySession_TerminatesOnExitCommand(t *testing.T) {
 	t.Parallel()
-	r, w := io.Pipe()
-	session := shellspy.SpySession(r, io.Discard)
-	errChan := make(chan error)
-
-	go func() { errChan <- session.Start() }()
-	go func() { time.Sleep(time.Second); errChan <- errors.New("Session timed out") }()
-	fmt.Fprintln(w, "exit")
-	done := <-errChan
-	if done != io.EOF {
-		t.Fatal("Expected session to be done but was not")
+	addr := setupRemoteServer(t, "password")
+	conn := setupConnection(t, addr)
+	line := readLine(t, conn)
+	if line != "Enter Password: " {
+		t.Fatalf("expected password prompt, but got %q", line)
+	}
+	writeLine(t, conn, "password")
+	writeLine(t, conn, "exit")
+	err := waitForBrokenPipe(conn)
+	if !errors.Is(err, syscall.EPIPE) {
+		t.Fatalf("expected broken pipe, but got %v", err)
 	}
 }
 
