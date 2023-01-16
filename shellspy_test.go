@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -254,15 +255,13 @@ func writeLine(t *testing.T, conn net.Conn, password string) {
 	}
 }
 
-func waitForFailure(conn net.Conn) error {
+func waitForBrokenPipe(conn net.Conn) error {
+	var err error
 	for i := 0; i < 3; i++ {
-		_, err := fmt.Fprintf(conn, "echo 'Is pipe broken?'\n")
+		_, err = fmt.Fprintf(conn, "echo 'Is pipe broken?'\n")
 		time.Sleep(50 * time.Millisecond)
-		if err != nil {
-			return err
-		}
 	}
-	return nil
+	return err
 }
 
 func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
@@ -275,9 +274,9 @@ func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
 	}
 	writeLine(t, conn, "incorrectPassword")
 	readLine(t, conn)
-	err := waitForFailure(conn)
-	if err == nil {
-		t.Fatal("expected error, got nil")
+	err := waitForBrokenPipe(conn)
+	if !errors.Is(err, syscall.EPIPE) {
+		t.Fatalf("expected a broken pipe, but got %q", err)
 	}
 
 }
