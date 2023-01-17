@@ -191,6 +191,36 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 		t.Fatalf("expected %s message, but got %q", want, contents)
 	}
 }
+func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
+	t.Parallel()
+	addr := setupRemoteServer(t, "correctPassword")
+	conn := setupConnection(t, addr)
+	supplyPassword(t, conn, "incorrectPassword")
+	err := waitForBrokenPipe(conn)
+	if !errors.Is(err, syscall.EPIPE) {
+		t.Fatalf("expected a broken pipe, but got %q", err)
+	}
+
+}
+
+func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
+	t.Parallel()
+	addr := setupRemoteServer(t, "correctPassword")
+	conn := setupConnection(t, addr)
+	line := readLine(t, conn)
+	if line != "Enter Password: " {
+		t.Fatalf("wanted 'Enter Password: ', got %s", line)
+	}
+	writeLine(t, conn, "correctPassword")
+	line = readLine(t, conn)
+	if line != "Welcome to the remote shell!" {
+		t.Fatalf("wanted 'Welcome to the remote shell!', got %s", line)
+	}
+	err := waitForBrokenPipe(conn)
+	if err != nil {
+		t.Fatalf("expected no error, but got %q", err)
+	}
+}
 
 func setupConnection(t *testing.T, addr string) net.Conn {
 	t.Helper()
@@ -226,35 +256,4 @@ func waitForBrokenPipe(conn net.Conn) error {
 		time.Sleep(50 * time.Millisecond)
 	}
 	return err
-}
-
-func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
-	t.Parallel()
-	addr := setupRemoteServer(t, "correctPassword")
-	conn := setupConnection(t, addr)
-	supplyPassword(t, conn, "incorrectPassword")
-	err := waitForBrokenPipe(conn)
-	if !errors.Is(err, syscall.EPIPE) {
-		t.Fatalf("expected a broken pipe, but got %q", err)
-	}
-
-}
-
-func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
-	t.Parallel()
-	addr := setupRemoteServer(t, "correctPassword")
-	conn := setupConnection(t, addr)
-	line := readLine(t, conn)
-	if line != "Enter Password: " {
-		t.Fatalf("wanted 'Enter Password: ', got %s", line)
-	}
-	writeLine(t, conn, "correctPassword")
-	line = readLine(t, conn)
-	if line != "Welcome to the remote shell!" {
-		t.Fatalf("wanted 'Welcome to the remote shell!', got %s", line)
-	}
-	err := waitForBrokenPipe(conn)
-	if err != nil {
-		t.Fatalf("expected no error, but got %q", err)
-	}
 }
