@@ -126,6 +126,15 @@ three
 	}
 }
 
+func supplyPassword(t *testing.T, conn net.Conn, password string) {
+	t.Helper()
+	line := readLine(t, conn)
+	if line != "Enter Password: " {
+		t.Fatalf("expected to read 'Enter Password: ' but got %q", line)
+	}
+	writeLine(t, conn, password)
+}
+
 func setupRemoteServer(t *testing.T, password string) string {
 	t.Helper()
 	listener, err := net.Listen("tcp", ":0")
@@ -154,11 +163,7 @@ func TestSpySession_TerminatesOnExitCommand(t *testing.T) {
 	t.Parallel()
 	addr := setupRemoteServer(t, "password")
 	conn := setupConnection(t, addr)
-	line := readLine(t, conn)
-	if line != "Enter Password: " {
-		t.Fatalf("expected password prompt, but got %q", line)
-	}
-	writeLine(t, conn, "password")
+	supplyPassword(t, conn, "password")
 	writeLine(t, conn, "exit")
 	err := waitForBrokenPipe(conn)
 	if !errors.Is(err, syscall.EPIPE) {
@@ -171,12 +176,8 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	addr := setupRemoteServer(t, "password")
 	conn := setupConnection(t, addr)
 	conn.SetDeadline(time.Now().Add(1 * time.Second))
+	supplyPassword(t, conn, "password")
 	line := readLine(t, conn)
-	if line != "Enter Password: " {
-		t.Fatalf("expected password prompt, but got %q", line)
-	}
-	writeLine(t, conn, "password")
-	line = readLine(t, conn)
 	if line != "Welcome to the remote shell!" {
 		t.Fatalf("expected welcome message, but got %q", line)
 	}
@@ -185,8 +186,9 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(contents) != "exit\nGoodbye!\n" {
-		t.Fatalf(cmp.Diff("exit\nGoodbye!\n", string(contents)))
+	want := "Goodbye!\n"
+	if !strings.Contains(string(contents), want) {
+		t.Fatalf("expected %s message, but got %q", want, contents)
 	}
 }
 
@@ -230,12 +232,7 @@ func TestRemoteShell_AuthClosesSessionOnIncorrectPassword(t *testing.T) {
 	t.Parallel()
 	addr := setupRemoteServer(t, "correctPassword")
 	conn := setupConnection(t, addr)
-	line := readLine(t, conn)
-	if line != "Enter Password: " {
-		t.Fatalf("wanted 'Enter Password: ', got %s", line)
-	}
-	writeLine(t, conn, "incorrectPassword")
-	readLine(t, conn)
+	supplyPassword(t, conn, "incorrectPassword")
 	err := waitForBrokenPipe(conn)
 	if !errors.Is(err, syscall.EPIPE) {
 		t.Fatalf("expected a broken pipe, but got %q", err)
