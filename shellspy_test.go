@@ -125,40 +125,6 @@ three
 		t.Fatal(cmp.Diff(want, got))
 	}
 }
-
-func supplyPassword(t *testing.T, conn net.Conn, password string) {
-	t.Helper()
-	line := readLine(t, conn)
-	if line != "Enter Password: " {
-		t.Fatalf("expected to read 'Enter Password: ' but got %q", line)
-	}
-	writeLine(t, conn, password)
-}
-
-func setupRemoteServer(t *testing.T, password string) string {
-	t.Helper()
-	listener, err := net.Listen("tcp", ":0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = listener.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(50 * time.Millisecond)
-	addr := listener.Addr().String()
-	go func() {
-		err := shellspy.ListenAndServe(addr, shellspy.NewPassword(password))
-		if err != nil {
-			panic(err)
-		}
-		if err == nil {
-			panic("expected server to block, but it exited with no error")
-		}
-	}()
-	return addr
-}
-
 func TestSpySession_TerminatesOnExitCommand(t *testing.T) {
 	t.Parallel()
 	addr := setupRemoteServer(t, "password")
@@ -222,6 +188,38 @@ func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
 	}
 }
 
+func TestRemoteShell_AuthLogsFailedLoginAttempts(t *testing.T) {
+	t.Parallel()
+	rbuf := &bytes.Buffer{}
+	wbuf := &bytes.Buffer{}
+	fmt.Println(wbuf, "incorrectPassword")
+	tbuf := &bytes.Buffer{}
+
+	session := shellspy.SpySession(rbuf, wbuf)
+	session.Transcript = tbuf
+	session.Auth(shellspy.NewPassword("correctPassword"))
+	contents := tbuf.String()
+	if contents != "FAILED LOGIN" {
+		t.Fatalf("expected 'FAILED LOGIN', got %q", contents)
+	}
+}
+
+func TestRemoteShell_AuthLogsSuccessfulLoginAttempts(t *testing.T) {
+	t.Parallel()
+	rbuf := &bytes.Buffer{}
+	wbuf := &bytes.Buffer{}
+	fmt.Println(wbuf, "correctPassword")
+	tbuf := &bytes.Buffer{}
+
+	session := shellspy.SpySession(rbuf, wbuf)
+	session.Transcript = tbuf
+	session.Auth(shellspy.NewPassword("correctPassword"))
+	contents := tbuf.String()
+	if contents != "SUCCESSFUL LOGIN" {
+		t.Fatalf("expected 'SUCCESSFUL LOGIN', got %q", contents)
+	}
+}
+
 func setupConnection(t *testing.T, addr string) net.Conn {
 	t.Helper()
 	conn, err := net.Dial("tcp", addr)
@@ -256,4 +254,37 @@ func waitForBrokenPipe(conn net.Conn) error {
 		time.Sleep(50 * time.Millisecond)
 	}
 	return err
+}
+
+func supplyPassword(t *testing.T, conn net.Conn, password string) {
+	t.Helper()
+	line := readLine(t, conn)
+	if line != "Enter Password: " {
+		t.Fatalf("expected to read 'Enter Password: ' but got %q", line)
+	}
+	writeLine(t, conn, password)
+}
+
+func setupRemoteServer(t *testing.T, password string) string {
+	t.Helper()
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = listener.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(50 * time.Millisecond)
+	addr := listener.Addr().String()
+	go func() {
+		err := shellspy.ListenAndServe(addr, shellspy.NewPassword(password))
+		if err != nil {
+			panic(err)
+		}
+		if err == nil {
+			panic("expected server to block, but it exited with no error")
+		}
+	}()
+	return addr
 }
