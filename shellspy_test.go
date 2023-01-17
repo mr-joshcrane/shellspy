@@ -191,32 +191,32 @@ func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
 func TestRemoteShell_AuthLogsFailedLoginAttempts(t *testing.T) {
 	t.Parallel()
 	rbuf := &bytes.Buffer{}
-	wbuf := &bytes.Buffer{}
-	fmt.Println(wbuf, "incorrectPassword")
 	tbuf := &bytes.Buffer{}
+	fmt.Fprintln(rbuf, "incorrectPassword")
 
-	session := shellspy.SpySession(rbuf, wbuf)
+	session := shellspy.SpySession(rbuf, io.Discard)
 	session.Transcript = tbuf
-	session.Auth(shellspy.NewPassword("correctPassword"))
-	contents := tbuf.String()
-	if contents != "FAILED LOGIN" {
-		t.Fatalf("expected 'FAILED LOGIN', got %q", contents)
+	session.Auth(shellspy.NewPassword("correctPassword\n"))
+	got := tbuf.String()
+	want := "FAILED LOGIN\n"
+	if got != want {
+		t.Fatalf("expected %s, got %q", want, got)
 	}
 }
 
 func TestRemoteShell_AuthLogsSuccessfulLoginAttempts(t *testing.T) {
 	t.Parallel()
 	rbuf := &bytes.Buffer{}
-	wbuf := &bytes.Buffer{}
-	fmt.Println(wbuf, "correctPassword")
 	tbuf := &bytes.Buffer{}
+	fmt.Fprintln(rbuf, "correctPassword")
 
-	session := shellspy.SpySession(rbuf, wbuf)
+	session := shellspy.SpySession(rbuf, io.Discard)
 	session.Transcript = tbuf
 	session.Auth(shellspy.NewPassword("correctPassword"))
-	contents := tbuf.String()
-	if contents != "SUCCESSFUL LOGIN" {
-		t.Fatalf("expected 'SUCCESSFUL LOGIN', got %q", contents)
+	got := tbuf.String()
+	want := "SUCCESSFUL LOGIN\n"
+	if got != want {
+		t.Fatalf("expected %s, got %q", want, got)
 	}
 }
 

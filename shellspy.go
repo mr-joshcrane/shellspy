@@ -55,6 +55,7 @@ func NewSpySession() Session {
 
 func (s *Session) Auth(serverPassword Password) bool {
 	if serverPassword == nil {
+		fmt.Fprintln(s.Transcript, "No password required.")
 		return true
 	}
 	fmt.Fprintln(s.output, "Enter Password: ")
@@ -62,12 +63,14 @@ func (s *Session) Auth(serverPassword Password) bool {
 	for scan.Scan() {
 		userPassword := scan.Text()
 		if userPassword == *serverPassword {
+			fmt.Fprintln(s.Transcript, "SUCCESSFUL LOGIN")
 			return true
 		}
 		break
 	}
 	fmt.Fprintln(s.output, "Incorrect Password: Closing connection")
 	s.Closed = true
+	fmt.Fprintln(s.Transcript, "FAILED LOGIN")
 	return false
 }
 
