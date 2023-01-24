@@ -38,6 +38,7 @@ type Session struct {
 	output     io.Writer
 	Transcript io.Writer
 	Closed     bool
+	Identity   string
 }
 
 func SpySession(r io.Reader, w io.Writer) Session {
@@ -46,6 +47,7 @@ func SpySession(r io.Reader, w io.Writer) Session {
 		output:     w,
 		Transcript: io.Discard,
 		Closed:     false,
+		Identity:   "anonymous",
 	}
 }
 
@@ -53,9 +55,12 @@ func NewSpySession() Session {
 	return SpySession(os.Stdin, os.Stdout)
 }
 
-func (s *Session) Auth(serverPassword Password) bool {
+func (s *Session) Auth(serverPassword Password, logger io.Writer) bool {
+	if logger == nil {
+		logger = io.Discard
+	}
 	if serverPassword == nil {
-		fmt.Fprintln(s.Transcript, "No password required.")
+		fmt.Fprintln(logger, "No password required.")
 		return true
 	}
 	fmt.Fprintln(s.output, "Enter Password: ")
@@ -63,14 +68,14 @@ func (s *Session) Auth(serverPassword Password) bool {
 	for scan.Scan() {
 		userPassword := scan.Text()
 		if userPassword == *serverPassword {
-			fmt.Fprintln(s.Transcript, "SUCCESSFUL LOGIN")
+			fmt.Fprintf(logger, "SUCCESSFUL LOGIN from %s\n", s.Identity)
 			return true
 		}
 		break
 	}
 	fmt.Fprintln(s.output, "Incorrect Password: Closing connection")
 	s.Closed = true
-	fmt.Fprintln(s.Transcript, "FAILED LOGIN")
+	fmt.Fprintf(logger, "FAILED LOGIN from %s\n", s.Identity)
 	return false
 }
 
@@ -103,21 +108,27 @@ func (s Session) Start() error {
 	return scan.Err()
 }
 
-func ListenAndServe(addr string, serverPassword Password) error {
+func ListenAndServe(addr string, serverPassword Password, logger io.Writer) error {
+	fmt.Fprintf(logger, "Starting listener on %s\n", addr)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
+		fmt.Fprintln(logger, err)
 		return err
 	}
+	fmt.Fprintf(logger, "Listener created.\n")
 	defer listener.Close()
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
+			fmt.Fprintln(logger, err)
 			return fmt.Errorf("Connection error: %q", err)
 		}
+		fmt.Fprintf(logger, "Accepting connection from %s\n", conn.RemoteAddr().String())
 		go func(conn net.Conn) {
 			defer conn.Close()
 			session := SpySession(conn, conn)
-			authenticated := session.Auth(serverPassword)
+			session.Identity = conn.RemoteAddr().String()
+			authenticated := session.Auth(serverPassword, logger)
 			if !authenticated {
 				return
 			}
