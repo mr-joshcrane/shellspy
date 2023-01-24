@@ -130,6 +130,7 @@ func TestSpySession_TerminatesOnExitCommand(t *testing.T) {
 	addr := setupRemoteServer(t, "password")
 	conn := setupConnection(t, addr)
 	supplyPassword(t, conn, "password")
+	time.Sleep(100 * time.Millisecond)
 	writeLine(t, conn, "exit")
 	err := waitForBrokenPipe(conn)
 	if !errors.Is(err, syscall.EPIPE) {
@@ -188,7 +189,7 @@ func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
 	}
 }
 
-func TestRemoteShell_AuthLogsFailedLoginAttempts(t *testing.T) {
+func TestSpySession_AuthLogsFailedLoginAttempts(t *testing.T) {
 	t.Parallel()
 	rbuf := &bytes.Buffer{}
 	tbuf := &bytes.Buffer{}
@@ -204,7 +205,7 @@ func TestRemoteShell_AuthLogsFailedLoginAttempts(t *testing.T) {
 	}
 }
 
-func TestRemoteShell_AuthLogsSuccessfulLoginAttempts(t *testing.T) {
+func TestSpySession_AuthLogsSuccessfulLoginAttempts(t *testing.T) {
 	t.Parallel()
 	rbuf := &bytes.Buffer{}
 	tbuf := &bytes.Buffer{}
@@ -239,18 +240,18 @@ func readLine(t *testing.T, conn net.Conn) string {
 	return scan.Text()
 }
 
-func writeLine(t *testing.T, conn net.Conn, password string) {
+func writeLine(t *testing.T, conn net.Conn, line string) {
 	t.Helper()
-	_, err := fmt.Fprintf(conn, password+"\n")
+	_, err := fmt.Fprintf(conn, line+"\n")
 	if err != nil {
-		t.Fatalf("attempted to write %s but got err %q", password, err)
+		t.Fatalf("attempted to write %s but got err %q", line, err)
 	}
 }
 
 func waitForBrokenPipe(conn net.Conn) error {
 	var err error
-	for i := 0; i < 3; i++ {
-		_, err = fmt.Fprintf(conn, "echo 'Is pipe broken?'\n")
+	for i := 0; i < 10; i++ {
+		_, err = fmt.Fprintf(conn, "echo ':Is pipe broken?'\n")
 		time.Sleep(50 * time.Millisecond)
 	}
 	return err
