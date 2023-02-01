@@ -23,7 +23,3 @@ func main() {
 	err := shellspy.ListenAndServe(fmt.Sprintf("0.0.0.0:%s", PORT), PASSWORD)
 	panic(err)
 }
-
-// logging connections
-// server startup diags
-// transcript -> to some logs
