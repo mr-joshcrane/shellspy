@@ -62,7 +62,7 @@ func TestCommandFromString_WithEmptyStringReturnsError(t *testing.T) {
 func TestSpySession_ReadsUserInputToCompletion(t *testing.T) {
 	t.Parallel()
 	input := strings.NewReader("test input one\ntest input two\ntest input three\n")
-	shellspy.SpySession(input, io.Discard).Start()
+	shellspy.NewSpySession(shellspy.WithInput(input)).Start()
 	contents, err := io.ReadAll(input)
 	if err != nil {
 		t.Fatal(err)
@@ -76,7 +76,7 @@ func TestSpySession_ExecutesCommandsAndOutputsResults(t *testing.T) {
 	t.Parallel()
 	input := strings.NewReader("echo one\necho two\necho three\n")
 	buf := &bytes.Buffer{}
-	shellspy.SpySession(input, buf).Start()
+	shellspy.NewSpySession(shellspy.WithInput(input), shellspy.WithOutput(buf)).Start()
 	want := "$ one\n$ two\n$ three\n$ "
 	got := buf.String()
 	if !strings.Contains(got, want) {
@@ -88,7 +88,7 @@ func TestSpySession_PrintsErrorsForFailedCommands(t *testing.T) {
 	t.Parallel()
 	input := strings.NewReader("nonexistent command\n")
 	buf := &bytes.Buffer{}
-	shellspy.SpySession(input, buf).Start()
+	shellspy.NewSpySession(shellspy.WithInput(input), shellspy.WithOutput(buf)).Start()
 	want := "$ exec: \"nonexistent\": executable file not found in $PATH\n$ "
 	got := buf.String()
 	if !strings.Contains(got, want) {
@@ -99,7 +99,7 @@ func TestSpySession_PrintsErrorsForFailedCommands(t *testing.T) {
 func TestSpySession_PrintsErrorsForInvalidCommands(t *testing.T) {
 	input := strings.NewReader("'''\n\n")
 	buf := &bytes.Buffer{}
-	shellspy.SpySession(input, buf).Start()
+	shellspy.NewSpySession(shellspy.WithInput(input), shellspy.WithOutput(buf)).Start()
 	want := "$ unbalanced quotes or backslashes in [''']\n$ \n$ "
 	got := buf.String()
 	if !strings.Contains(got, want) {
@@ -112,7 +112,7 @@ func TestSpySession_ProducesTranscriptOfSession(t *testing.T) {
 	t.Parallel()
 	input := strings.NewReader("echo one\necho two\necho three\n")
 	buf := &bytes.Buffer{}
-	session := shellspy.SpySession(input, io.Discard)
+	session := shellspy.NewSpySession(shellspy.WithInput(input))
 	session.Transcript = buf
 	session.Start()
 	want := `$ echo one
@@ -144,7 +144,7 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	t.Parallel()
 	input := strings.NewReader("exit\n")
 	buf := &bytes.Buffer{}
-	shellspy.SpySession(input, buf).Start()
+	shellspy.NewSpySession(shellspy.WithInput(input), shellspy.WithOutput(buf)).Start()
 	want := "Welcome to the remote shell!\n$ Goodbye!\n"
 	got := buf.String()
 	if want != got {
