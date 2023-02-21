@@ -159,6 +159,10 @@ func NewSpySession(opts ...SessionOption) *Session {
 	return s
 }
 
+// Start is a method on Session that takes no arguments and
+// returns an error. It will read from the session's input
+// and write to the session's output. It will (optionally)
+// write to the sessions transcript.
 func (s Session) Start() error {
 	fmt.Fprintln(s.output, "Welcome to the remote shell!")
 	w := io.MultiWriter(s.output, s.Transcript)
@@ -190,12 +194,9 @@ func (s Session) Start() error {
 	return scan.Err()
 }
 
+// ListenAndServe is a convenience wrapper that starts a
+// blocking server that is listening on the supplied port.
 func ListenAndServe(addr string, serverPassword string) error {
 	s := NewServer(serverPassword)
 	return s.ListenAndServe()
 }
-
-// create a server struct
-// move the auth method to server
-// move the welcome messages inside Start
-// we have to call "handle" from Listen and serve
