@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"syscall"
 	"testing"
@@ -304,4 +305,20 @@ func setupRemoteServer(t *testing.T, password string, logger io.Writer) string {
 	return addr
 }
 
-// Copy the http ListenAndServe conventions
+func ExampleLog() {
+	s := shellspy.Server{
+		Logger: os.Stdout,
+	}
+	s.Log("Log simple server messages like this")
+	// Output:
+	// Log simple server messages like this
+}
+func ExampleLogf() {
+	s := shellspy.Server{
+		Logger: os.Stdout,
+	}
+	err := errors.New("a complex message")
+	s.Logf("Log %s like this", err)
+	// Output:
+	// Log a complex message like this
+}
