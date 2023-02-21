@@ -63,7 +63,7 @@ func TestCommandFromString_WithEmptyStringReturnsError(t *testing.T) {
 func TestSpySession_ReadsUserInputToCompletion(t *testing.T) {
 	t.Parallel()
 	input := strings.NewReader("test input one\ntest input two\ntest input three\n")
-	shellspy.NewSpySession(shellspy.WithInput(input)).Start()
+	shellspy.NewSpySession(shellspy.WithInput(input), shellspy.WithOutput(&bytes.Buffer{})).Start()
 	contents, err := io.ReadAll(input)
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ func TestSpySession_ProducesTranscriptOfSession(t *testing.T) {
 	t.Parallel()
 	input := strings.NewReader("echo one\necho two\necho three\n")
 	buf := &bytes.Buffer{}
-	session := shellspy.NewSpySession(shellspy.WithInput(input))
+	session := shellspy.NewSpySession(shellspy.WithInput(input), shellspy.WithOutput(&bytes.Buffer{}))
 	session.Transcript = buf
 	session.Start()
 	want := `$ echo one
