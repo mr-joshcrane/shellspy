@@ -106,15 +106,13 @@ func TestSpySession_PrintsErrorsForInvalidCommands(t *testing.T) {
 	if !strings.Contains(got, want) {
 		t.Fatalf("wanted %q, got %q", want, got)
 	}
-
 }
 
 func TestSpySession_ProducesTranscriptOfSession(t *testing.T) {
 	t.Parallel()
 	input := strings.NewReader("echo one\necho two\necho three\n")
 	buf := &bytes.Buffer{}
-	session := shellspy.NewSpySession(shellspy.WithInput(input), shellspy.WithOutput(&bytes.Buffer{}))
-	session.Transcript = buf
+	session := shellspy.NewSpySession(shellspy.WithInput(input), shellspy.WithOutput(&bytes.Buffer{}), shellspy.WithTranscript(buf))
 	session.Start()
 	want := `$ echo one
 one

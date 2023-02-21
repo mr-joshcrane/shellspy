@@ -130,9 +130,16 @@ func WithInput(input io.Reader) SessionOption {
 		return s
 	}
 }
-func WithOutput(output io.ReadWriter) SessionOption {
+func WithOutput(output io.Writer) SessionOption {
 	return func(s *Session) *Session {
 		s.output = output
+		return s
+	}
+}
+
+func WithTranscript(transcript io.Writer) SessionOption {
+	return func(s *Session) *Session {
+		s.Transcript = transcript
 		return s
 	}
 }
