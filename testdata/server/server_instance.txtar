@@ -1,0 +1,10 @@
+! exec server
+stdout 'PORT environment variable must be set'
+env PORT=3333
+! exec server
+stdout 'PASSWORD environment variable must be set'
+env PASSWORD='password'
+! exec server &
+exec sh -c 'ps -aux > output.txt'
+grep /bin/server output.txt
+stop

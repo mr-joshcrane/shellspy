@@ -1,13 +1,11 @@
 stdin commands
-exec main
+exec local
 cmp stdout expected
 
 -- commands --
 echo what
 echo who
 echo how
-exit
-
 -- expected --
 Welcome to the remote shell!
 $ what

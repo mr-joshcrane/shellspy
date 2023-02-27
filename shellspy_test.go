@@ -21,15 +21,20 @@ import (
 
 func TestMain(m *testing.M) {
 	os.Exit(testscript.RunMain(m, map[string]func() int{
-		"main": shellspy.Main,
+		"local":  shellspy.LocalInstance,
+		"server": shellspy.ServerInstance,
 	}))
 }
 
-func TestScript(t *testing.T) {
+func TestLocal(t *testing.T) {
 	t.Parallel()
-	testscript.Run(t, testscript.Params{Dir: "./testdata/script"})
+	testscript.Run(t, testscript.Params{Dir: "./testdata/local"})
 }
 
+func TestServer(t *testing.T) {
+	t.Parallel()
+	testscript.Run(t, testscript.Params{Dir: "./testdata/server"})
+}
 func TestCommandFromString_(t *testing.T) {
 	t.Parallel()
 	cases := map[string]struct {
