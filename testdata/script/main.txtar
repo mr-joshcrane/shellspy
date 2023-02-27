@@ -1,0 +1,16 @@
+stdin commands
+exec main
+cmp stdout expected
+
+-- commands --
+echo what
+echo who
+echo how
+exit
+
+-- expected --
+Welcome to the remote shell!
+$ what
+$ who
+$ how
+$ Goodbye!

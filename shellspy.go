@@ -207,3 +207,12 @@ func ListenAndServe(addr string, serverPassword string) error {
 	s := NewServer(serverPassword)
 	return s.ListenAndServe()
 }
+
+func Main() int {
+	session := NewSpySession()
+	err := session.Start()
+	if err != nil {
+		return 1
+	}
+	return 0
+}

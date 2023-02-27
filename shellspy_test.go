@@ -16,7 +16,19 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/mr-joshcrane/shellspy"
+	"github.com/rogpeppe/go-internal/testscript"
 )
+
+func TestMain(m *testing.M) {
+	os.Exit(testscript.RunMain(m, map[string]func() int{
+		"main": shellspy.Main,
+	}))
+}
+
+func TestScript(t *testing.T) {
+	t.Parallel()
+	testscript.Run(t, testscript.Params{Dir: "./testdata/script"})
+}
 
 func TestCommandFromString_(t *testing.T) {
 	t.Parallel()
