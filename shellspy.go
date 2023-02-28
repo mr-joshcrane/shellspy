@@ -34,10 +34,11 @@ type Server struct {
 }
 
 // Convenience wrapper for the Server struct with sensible defaults.
-func NewServer(password string) *Server {
+func NewServer(addr, password string) *Server {
 	return &Server{
 		Logger:   os.Stderr,
 		Password: password,
+		Address:  addr,
 	}
 }
 
@@ -204,7 +205,7 @@ func (s Session) Start() error {
 // ListenAndServe is a convenience wrapper that starts a
 // blocking server that is listening on the supplied port.
 func ListenAndServe(addr string, serverPassword string) error {
-	s := NewServer(serverPassword)
+	s := NewServer(addr, serverPassword)
 	return s.ListenAndServe()
 }
 
