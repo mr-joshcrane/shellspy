@@ -19,7 +19,7 @@ $
 ```bash
 $ go install github.com/mr-joshcrane/cmd/shellspysrv@latest
 $ export PORT=8000
-$ export PASSPASSWORD=mySecurePassword
+$ export PASSWORD=mySecurePassword
 $ shellspysrv
 Starting shellspy on port 8000
 Starting listener on 0.0.0.0:8000
