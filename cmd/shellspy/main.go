@@ -4,6 +4,6 @@ import (
 	"github.com/mr-joshcrane/shellspy"
 )
 
-func main() { 
+func main() {
 	shellspy.LocalInstance()
 }
