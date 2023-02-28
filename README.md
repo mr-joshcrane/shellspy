@@ -20,7 +20,8 @@ Listener created.
 $ nc localhost 8000
 Enter Password:
 mySecurePassword
-
+Welcome to the remote shell!
+$
 ```
 
 
