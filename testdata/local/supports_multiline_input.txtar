@@ -1,14 +1,22 @@
 stdin commands
 exec local
-cmp stdout expected
+cmp stdout expected.stdout
+cmp transcript.txt expected.transcript
 
 -- commands --
 echo what
 echo who
 echo how
--- expected --
+-- expected.stdout --
 Welcome to the remote shell!
 $ what
 $ who
 $ how
 $ Goodbye!
+-- expected.transcript --
+$ echo what
+what
+$ echo who
+who
+$ echo how
+how
