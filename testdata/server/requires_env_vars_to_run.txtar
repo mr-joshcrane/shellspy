@@ -5,6 +5,7 @@ env PORT=3333
 stdout 'PASSWORD environment variable must be set'
 env PASSWORD='password'
 ! exec server &
-exec sh -c 'ps -aux > output.txt'
-grep /bin/server output.txt
+exec sleep 1
+exec sh -c 'echo "grapes\nexit\n" > nc localhost 3333'
+
 stop
