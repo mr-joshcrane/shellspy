@@ -209,11 +209,14 @@ func ListenAndServe(addr string, serverPassword string) error {
 }
 
 func LocalInstance() int {
-	session := NewSpySession()
-	err := session.Start()
+	newFile, err := os.Create("transcript.txt")
 	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	session := NewSpySession()
+	session.Transcript = newFile
+	session.Start()
 	return 0
 }
 
