@@ -6,7 +6,8 @@
 ShellSpy is available in two flavours.
 
 LocalSpy Mode: Useful when you want to capture a transcript of local shell commands and output.
-LocalSpy Quick Install
+
+**LocalSpy Quick Install**
 ```bash
 $ go install github.com/mr-joshcrane/cmd/shellspy/@latest
 $ shellspy
@@ -27,7 +28,7 @@ Listener created.
 ## Server now listening for connections
 ```
 
-**Server Quick Connect**
+**ServerSpy Quick Remote Connect Example**
 ```bash
 $ nc localhost 8000
 Enter Password:
