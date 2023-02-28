@@ -2,7 +2,18 @@
 
 # ShellSpy
 
-**Server Quick Install**
+ShellSpy is available in two flavours.
+
+LocalSpy Mode: Useful when you want to capture a transcript of local shell commands and output.
+LocalSpy Quick Install
+```bash
+$ go install github.com/mr-joshcrane/cmd/shellspy/@latest
+$ shellspy
+Welcome to the remote shell!
+$
+```
+
+**ServerSpy Quick Install**
 ```bash
 $ go install github.com/mr-joshcrane/cmd/shellspysrv@latest
 $ export PORT=8000
@@ -23,13 +34,7 @@ mySecurePassword
 Welcome to the remote shell!
 $
 ```
-
-
-**Usage**
-
-```bash
-$ templater [FIELDS_TO_UNPACK ...]
-```
+Transcript of sessions are stored on disk to `transcript.txt`
 
 # ShellSpy
 
