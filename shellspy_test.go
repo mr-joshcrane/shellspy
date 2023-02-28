@@ -26,12 +26,12 @@ func TestMain(m *testing.M) {
 	}))
 }
 
-func TestLocal(t *testing.T) {
+func TestLocalInstance(t *testing.T) {
 	t.Parallel()
 	testscript.Run(t, testscript.Params{Dir: "./testdata/local"})
 }
 
-func TestServer(t *testing.T) {
+func TestServerInstance(t *testing.T) {
 	t.Parallel()
 	testscript.Run(t, testscript.Params{Dir: "./testdata/server"})
 }
