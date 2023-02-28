@@ -1,3 +1,35 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/mr-joshcrane/templater.svg)](https://pkg.go.dev/github.com/mr-joshcrane/templater)[![License: GPL-2.0](https://img.shields.io/badge/Licence-GPL-2)](https://opensource.org/licenses/GPL-2.0)[![Go Report Card](https://goreportcard.com/badge/github.com/mr-joshcrane/templater)](https://goreportcard.com/report/github.com/mr-joshcrane/templater)
+
+# ShellSpy
+
+**Server Quick Install**
+```bash
+$ go install github.com/mr-joshcrane/cmd/shellspysrv@latest
+$ export PORT=8000
+$ export PASSPASSWORD=mySecurePassword
+$ shellspysrv
+Starting shellspy on port 8000
+Starting listener on 0.0.0.0:8000
+Listener created.
+
+## Server now listening for connections
+```
+
+**Server Quick Connect**
+```bash
+$ nc localhost 8000
+Enter Password:
+mySecurePassword
+
+```
+
+
+**Usage**
+
+```bash
+$ templater [FIELDS_TO_UNPACK ...]
+```
+
 # ShellSpy
 
 This is a Go project template, intended for students at the [Bitfield Institute of Technology](https://bitfieldconsulting.com/golang/bit)—but everyone's welcome to try it if you're interested in learning or practicing Go.

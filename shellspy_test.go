@@ -243,7 +243,6 @@ func TestServerSideLogging(t *testing.T) {
 	if !cmp.Equal(want, got, cmpopts.SortSlices(less)) {
 		t.Fatalf(cmp.Diff(want, got))
 	}
-
 }
 
 func setupConnection(t *testing.T, addr string) net.Conn {
