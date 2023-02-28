@@ -9,7 +9,7 @@ LocalSpy Mode: Useful when you want to capture a transcript of local shell comma
 
 **LocalSpy Quick Install**
 ```bash
-$ go install github.com/mr-joshcrane/cmd/shellspy/@latest
+$ go install github.com/mr-joshcrane/cmd/shellspy@latest
 $ shellspy
 Welcome to the remote shell!
 $
