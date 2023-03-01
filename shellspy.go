@@ -2,6 +2,7 @@ package shellspy
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -12,7 +13,7 @@ import (
 )
 
 // CommandFromString takes a string and converts it into a
-// pointer to a exec.Cmd struct. It will return an error if
+// pointer to a [exec.Cmd] struct. It will return an error if
 // there are unbalanced quotes or backslashes in the string.
 func CommandFromString(s string) (*exec.Cmd, error) {
 	commands, ok := shell.Split(s)
@@ -33,19 +34,13 @@ type Server struct {
 	Logger   io.Writer
 }
 
-// Convenience wrapper for the Server struct with sensible defaults.
+// NewServer is a convenience wrapper for the [Server] struct with sensible defaults.
 func NewServer(addr, password string) *Server {
 	return &Server{
 		Logger:   os.Stderr,
 		Password: password,
 		Address:  addr,
 	}
-}
-
-// Convenience method on Servers to set the address and start the server.
-func (s *Server) ListenAndServeOn(addr string) error {
-	s.Address = addr
-	return s.ListenAndServe()
 }
 
 // ListenAndServe listens on the provided address and starts a goroutine
@@ -70,8 +65,8 @@ func (s *Server) ListenAndServe() error {
 	}
 }
 
-// Auth is a method on server that takes a connection object,
-// challenges the user for the server password, returning true
+// Auth is a method on server that takes a [net.conn],
+// challenges the user for the [server] password, returning true
 // if the password matches and false if it does not.
 func (s *Server) Auth(conn io.ReadWriter) bool {
 	fmt.Fprintln(conn, "Enter Password: ")
@@ -87,9 +82,9 @@ func (s *Server) Auth(conn io.ReadWriter) bool {
 	return false
 }
 
-// handle is a method on server that takes a connection,
-// Provides an auth challenge, and initiates a session on
-// successful login. Will not create a session on failed auth challenge.
+// handle is a method on server that takes a [net.Conn],
+// Provides an [Auth] challenge, and initiates a [session] on
+// successful login. Will not create a [session] on failed [Auth] challenge.
 func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
 	if !s.Auth(conn) {
@@ -106,60 +101,58 @@ func (s *Server) handle(conn net.Conn) {
 	}
 }
 
-// Log is a convenience method for server that wraps Fprintln.
+// Log writes args to the [Server.Logger].
 func (s *Server) Log(args ...any) {
 	fmt.Fprintln(s.Logger, args...)
 }
 
-// Logf is a convenience method for server that wraps Fprintf.
+// Logf formats args into str and logs via [Server.Logger].
 func (s *Server) Logf(str string, args ...any) {
 	fmt.Fprintf(s.Logger, str, args...)
 }
 
-type Session struct {
-	r          io.Reader
+type session struct {
+	input      io.Reader
 	output     io.Writer
-	Transcript io.Writer
-	Closed     bool
+	transcript io.Writer
 }
 
-type SessionOption func(*Session) *Session
+type SessionOption func(*session) *session
 
 func WithInput(input io.Reader) SessionOption {
-	return func(s *Session) *Session {
-		s.r = input
+	return func(s *session) *session {
+		s.input = input
 		return s
 	}
 }
 func WithOutput(output io.Writer) SessionOption {
-	return func(s *Session) *Session {
+	return func(s *session) *session {
 		s.output = output
 		return s
 	}
 }
 
 func WithTranscript(transcript io.Writer) SessionOption {
-	return func(s *Session) *Session {
-		s.Transcript = transcript
+	return func(s *session) *session {
+		s.transcript = transcript
 		return s
 	}
 }
 
 func WithConnection(conn net.Conn) SessionOption {
-	return func(s *Session) *Session {
-		s.r = conn
+	return func(s *session) *session {
+		s.input = conn
 		s.output = conn
 		return s
 	}
 }
 
 // Convenience wrapped around Session with default arguments.
-func NewSpySession(opts ...SessionOption) *Session {
-	s := &Session{
-		r:          os.Stdin,
+func NewSpySession(opts ...SessionOption) *session {
+	s := &session{
+		input:      os.Stdin,
 		output:     os.Stdout,
-		Transcript: io.Discard,
-		Closed:     false,
+		transcript: io.Discard,
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -167,23 +160,22 @@ func NewSpySession(opts ...SessionOption) *Session {
 	return s
 }
 
-// Start is a method on Session that takes no arguments and
-// returns an error. It will read from the session's input
-// and write to the session's output. It will (optionally)
-// write to the sessions transcript.
-func (s Session) Start() error {
+// Start reads from the [session] input
+// and write to the [session] output. It will also
+// write to the [session] transcript.
+func (s session) Start() error {
 	fmt.Fprintln(s.output, "Welcome to the remote shell!")
-	w := io.MultiWriter(s.output, s.Transcript)
+	w := io.MultiWriter(s.output, s.transcript)
 	fmt.Fprint(s.output, "$ ")
-	scan := bufio.NewScanner(s.r)
+	scan := bufio.NewScanner(s.input)
 
 	for scan.Scan() {
 		line := scan.Text()
 		if line == "exit" {
-			fmt.Fprintf(s.Transcript, "exit\n")
+			fmt.Fprintf(s.transcript, "exit\n")
 			break
 		}
-		fmt.Fprintf(s.Transcript, "$ %s\n", line)
+		fmt.Fprintf(s.transcript, "$ %s\n", line)
 		cmd, err := CommandFromString(line)
 		if err != nil {
 			fmt.Fprintln(w, err)
@@ -202,8 +194,8 @@ func (s Session) Start() error {
 	return scan.Err()
 }
 
-// ListenAndServe is a convenience wrapper that starts a
-// blocking server that is listening on the supplied port.
+// ListenAndServe starts listening on the supplied port.
+// It does not return until the server is shutdown.
 func ListenAndServe(addr string, serverPassword string) error {
 	s := NewServer(addr, serverPassword)
 	return s.ListenAndServe()
@@ -216,24 +208,29 @@ func LocalInstance() int {
 		return 1
 	}
 	session := NewSpySession()
-	session.Transcript = newFile
+	session.transcript = newFile
 	session.Start()
 	return 0
 }
 
+var ErrServerClosed = errors.New("Server closed")
+
 func ServerInstance() int {
 	PORT := os.Getenv("PORT")
 	if PORT == "" {
-		fmt.Println("PORT environment variable must be set")
-		os.Exit(1)
+		fmt.Fprintln(os.Stderr, "PORT environment variable must be set")
+		return 1
 	}
 	PASSWORD := os.Getenv("PASSWORD")
 	if PASSWORD == "" {
-		fmt.Println("PASSWORD environment variable must be set")
-		os.Exit(1)
+		fmt.Fprintln(os.Stderr, "PASSWORD environment variable must be set")
+		return 1
 	}
 
 	fmt.Println("Starting shellspy on port", PORT)
-	err := ListenAndServe(fmt.Sprintf("0.0.0.0:%s", PORT), PASSWORD)
-	panic(err)
+	if err := ListenAndServe(fmt.Sprintf("0.0.0.0:%s", PORT), PASSWORD); err != nil && err != ErrServerClosed {
+		fmt.Fprint(os.Stderr, err)
+		return 1
+	}
+	return 0
 }

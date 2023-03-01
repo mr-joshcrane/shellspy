@@ -11,6 +11,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -168,6 +169,24 @@ func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.
 	}
 }
 
+func TestRemoteShell_AuthClosesSessionOnBadRead(t *testing.T) {
+	t.Parallel()
+	addr := setupRemoteServer(t, "correctPassword", io.Discard)
+	conn := setupConnection(t, addr)
+	line := readLine(t, conn)
+	if line != "Enter Password: " {
+		t.Fatalf("wanted 'Enter Password: ', got %s", line)
+	}
+	writeLine(t, conn, "correctPassword")
+	line = readLine(t, conn)
+	if line != "Welcome to the remote shell!" {
+		t.Fatalf("wanted 'Welcome to the remote shell!', got %s", line)
+	}
+	err := waitForBrokenPipe(conn)
+	if err != nil {
+		t.Fatalf("expected no error, but got %q", err)
+	}
+}
 func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
 	t.Parallel()
 	addr := setupRemoteServer(t, "correctPassword", io.Discard)
@@ -187,6 +206,25 @@ func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
 	}
 }
 
+type ErrConn struct {
+	io.Reader
+}
+
+func (e ErrConn) Write(p []byte) (n int, err error) {
+	return 0, nil
+}
+
+func TestAuthIsFalseForErrorOnRead(t *testing.T) {
+	t.Parallel()
+	conn := ErrConn{iotest.ErrReader(errors.New("faulty read"))}
+	s := shellspy.Server{
+		Password: "correctPassword",
+		Logger:   io.Discard,
+	}
+	if s.Auth(conn) {
+		t.Fatal(true)
+	}
+}
 func TestAuthIsFalseForIncorrectPassword(t *testing.T) {
 	t.Parallel()
 	conn := &bytes.Buffer{}
@@ -319,7 +357,7 @@ func setupRemoteServer(t *testing.T, password string, logger io.Writer) string {
 	return addr
 }
 
-func ExampleLog() {
+func ExampleServer_Log() {
 	s := shellspy.Server{
 		Logger: os.Stdout,
 	}
@@ -327,7 +365,7 @@ func ExampleLog() {
 	// Output:
 	// Log simple server messages like this
 }
-func ExampleLogf() {
+func ExampleServer_Logf() {
 	s := shellspy.Server{
 		Logger: os.Stdout,
 	}
@@ -335,4 +373,8 @@ func ExampleLogf() {
 	s.Logf("Log %s like this", err)
 	// Output:
 	// Log a complex message like this
+}
+
+func ExampleServer_Start() {
+
 }
