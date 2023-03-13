@@ -47,7 +47,8 @@ func NewServer(addr, password, transcriptDirectory string) *Server {
 		transcriptCounter:   0,
 	}
 }
-
+// GetTranscriptNumber is a goroutine safe method
+// for incrementing then retriving the current transcript number.
 func (s *Server) GetTranscriptNumber() uint64 {
 	return atomic.AddUint64(&s.transcriptCounter, 1)
 }
