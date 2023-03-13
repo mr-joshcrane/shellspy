@@ -245,7 +245,6 @@ func TestAuthIsTrueForCorrectPassword(t *testing.T) {
 }
 
 func TestServerSideLogging(t *testing.T) {
-	shellspy.Timestamp = func() int64 { return 123 }
 	buf := &bytes.Buffer{}
 	addr, tempdir := setupRemoteServer(t, "correctPassword", buf)
 	c1 := setupConnection(t, addr)
@@ -269,8 +268,8 @@ func TestServerSideLogging(t *testing.T) {
 		fmt.Sprintf("SUCCESSFUL LOGIN from %s", c1.LocalAddr()),
 		fmt.Sprintf("SUCCESSFUL LOGIN from %s", c3.LocalAddr()),
 		fmt.Sprintf("FAILED LOGIN from %s", c2.LocalAddr()),
-		fmt.Sprintf("Transcript for new session available at %s/%d.txt", tempdir, shellspy.Timestamp()),
-		fmt.Sprintf("Transcript for new session available at %s/%d.txt", tempdir, shellspy.Timestamp()),
+		fmt.Sprintf("Transcript for new session available at %s/%d.txt", tempdir, 1),
+		fmt.Sprintf("Transcript for new session available at %s/%d.txt", tempdir, 2),
 	}
 	less := func(a, b string) bool { return a < b }
 	if !cmp.Equal(want, got, cmpopts.SortSlices(less)) {
@@ -282,15 +281,12 @@ func TestServerSideTranscriptsAreOnePerSuccessfulConnection(t *testing.T) {
 	addr, tempDir := setupRemoteServer(t, "correctPassword", io.Discard)
 
 	c1 := setupConnection(t, addr)
-	shellspy.Timestamp = func() int64 { return 1 }
 	fmt.Fprintln(c1, "correctPassword")
 
 	c2 := setupConnection(t, addr)
-	shellspy.Timestamp = func() int64 { return 2 }
 	fmt.Fprintln(c2, "incorrectPassword")
 
 	c3 := setupConnection(t, addr)
-	shellspy.Timestamp = func() int64 { return 3 }
 	fmt.Fprintln(c3, "correctPassword")
 
 	time.Sleep(50 * time.Millisecond)

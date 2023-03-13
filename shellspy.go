@@ -8,7 +8,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"time"
+	"sync/atomic"
 
 	"bitbucket.org/creachadair/shell"
 )
@@ -34,6 +34,7 @@ type Server struct {
 	Password            string
 	Logger              io.Writer
 	TranscriptDirectory string
+	transcriptCounter   uint64
 }
 
 // NewServer is a convenience wrapper for the [Server] struct with sensible defaults.
@@ -43,7 +44,12 @@ func NewServer(addr, password, transcriptDirectory string) *Server {
 		Password:            password,
 		Address:             addr,
 		TranscriptDirectory: transcriptDirectory,
+		transcriptCounter:   0,
 	}
+}
+
+func (s *Server) GetTranscriptNumber() uint64 {
+	return atomic.AddUint64(&s.transcriptCounter, 1)
 }
 
 // ListenAndServe listens on the provided address and starts a goroutine
@@ -84,20 +90,19 @@ func (s *Server) Auth(conn io.ReadWriter) bool {
 	fmt.Fprintln(conn, "Incorrect Password: Closing connection")
 	return false
 }
-var Timestamp = time.Now().UnixNano
 
 // handle is a method on server that takes a [net.Conn],
 // Provides an [Auth] challenge, and initiates a [session] on
 // successful login. Will not create a [session] on failed [Auth] challenge.
-func (s Server) handle(conn net.Conn) {
+func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
 	if !s.Auth(conn) {
 		s.Logf("FAILED LOGIN from %s\n", conn.RemoteAddr())
 		return
 	}
 	s.Logf("SUCCESSFUL LOGIN from %s\n", conn.RemoteAddr())
-	timestamp := fmt.Sprint(Timestamp())
-	filename := fmt.Sprintf("%s/%s.txt", s.TranscriptDirectory, timestamp)
+	transcriptLogName := fmt.Sprint(s.GetTranscriptNumber())
+	filename := fmt.Sprintf("%s/%s.txt", s.TranscriptDirectory, transcriptLogName)
 	file, err := os.Create(filename)
 	if err != nil {
 		s.Log(err)
