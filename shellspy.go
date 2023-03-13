@@ -102,7 +102,7 @@ func (s *Server) handle(conn net.Conn) {
 	}
 	s.Logf("SUCCESSFUL LOGIN from %s\n", conn.RemoteAddr())
 	transcriptLogName := fmt.Sprint(s.GetTranscriptNumber())
-	filename := fmt.Sprintf("%s/%s.txt", s.TranscriptDirectory, transcriptLogName)
+	filename := fmt.Sprintf("%s/transcript-%s.txt", s.TranscriptDirectory, transcriptLogName)
 	file, err := os.Create(filename)
 	if err != nil {
 		s.Log(err)

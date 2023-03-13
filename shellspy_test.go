@@ -268,8 +268,8 @@ func TestServerSideLogging(t *testing.T) {
 		fmt.Sprintf("SUCCESSFUL LOGIN from %s", c1.LocalAddr()),
 		fmt.Sprintf("SUCCESSFUL LOGIN from %s", c3.LocalAddr()),
 		fmt.Sprintf("FAILED LOGIN from %s", c2.LocalAddr()),
-		fmt.Sprintf("Transcript for new session available at %s/%d.txt", tempdir, 1),
-		fmt.Sprintf("Transcript for new session available at %s/%d.txt", tempdir, 2),
+		fmt.Sprintf("Transcript for new session available at %s/transcript-%d.txt", tempdir, 1),
+		fmt.Sprintf("Transcript for new session available at %s/transcript-%d.txt", tempdir, 2),
 	}
 	less := func(a, b string) bool { return a < b }
 	if !cmp.Equal(want, got, cmpopts.SortSlices(less)) {

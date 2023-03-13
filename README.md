@@ -37,4 +37,6 @@ Welcome to the remote shell!
 $
 ```
 
-Transcript of sessions are stored on disk to `transcript.txt`
+Transcript of LocalSpy  sessions are stored on disk to `transcript.txt`
+
+Transcripts of ServerSpy sessions are stored server side in the transcripts directory. There is one file per session with an incrementing session number in the format `transcripts/transcript-<sessionNumber>.txt`.
