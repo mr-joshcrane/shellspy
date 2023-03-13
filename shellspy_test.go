@@ -207,14 +207,6 @@ func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
 	}
 }
 
-type ErrConn struct {
-	io.Reader
-}
-
-func (e ErrConn) Write(p []byte) (n int, err error) {
-	return 0, nil
-}
-
 func TestAuthIsFalseForErrorOnRead(t *testing.T) {
 	t.Parallel()
 	conn := ErrConn{iotest.ErrReader(errors.New("faulty read"))}
@@ -286,19 +278,6 @@ func TestServerSideLogging(t *testing.T) {
 	}
 }
 
-func numberOfFilesInFolder(path string) int {
-	folder, err := os.Open(path)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer folder.Close()
-	files, err := folder.ReadDir(-1)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return len(files)
-}
-
 func TestServerSideTranscriptsAreOnePerSuccessfulConnection(t *testing.T) {
 	addr, tempDir := setupRemoteServer(t, "correctPassword", io.Discard)
 
@@ -320,6 +299,46 @@ func TestServerSideTranscriptsAreOnePerSuccessfulConnection(t *testing.T) {
 	if got != 2 {
 		t.Fatalf("expected 2 files in transcript folder but got %d", got)
 	}
+}
+
+func ExampleServer_Log() {
+	s := shellspy.Server{
+		Logger: os.Stdout,
+	}
+	s.Log("Log simple server messages like this")
+	// Output:
+	// Log simple server messages like this
+}
+func ExampleServer_Logf() {
+	s := shellspy.Server{
+		Logger: os.Stdout,
+	}
+	err := errors.New("a complex message")
+	s.Logf("Log %s like this", err)
+	// Output:
+	// Log a complex message like this
+}
+
+func ExampleWithInput() {
+	shellspy.NewSpySession(shellspy.WithInput(os.Stdin))
+}
+
+func ExampleWithOutput() {
+	shellspy.NewSpySession(shellspy.WithOutput(os.Stdout))
+}
+
+func ExampleWithTranscript() {
+	// To see the transcript in the terminal, you might want to use [os.Stdout]
+	shellspy.NewSpySession(shellspy.WithTranscript(os.Stdout))
+
+	// Alternatively you might want to direct it to an [io.Writer]
+	buf := bytes.NewBuffer(nil)
+	shellspy.NewSpySession(shellspy.WithTranscript(buf))
+}
+
+func ExampleWithConnection() {
+	conn, _ := net.Dial("tcp", "localhost:8080")
+	shellspy.NewSpySession(shellspy.WithConnection(conn))
 }
 
 func setupConnection(t *testing.T, addr string) net.Conn {
@@ -411,42 +430,23 @@ func setupRemoteServer(t *testing.T, password string, logger io.Writer) (addr, t
 	return addr, tempDir
 }
 
-func ExampleServer_Log() {
-	s := shellspy.Server{
-		Logger: os.Stdout,
+func numberOfFilesInFolder(path string) int {
+	folder, err := os.Open(path)
+	if err != nil {
+		log.Fatal(err)
 	}
-	s.Log("Log simple server messages like this")
-	// Output:
-	// Log simple server messages like this
-}
-func ExampleServer_Logf() {
-	s := shellspy.Server{
-		Logger: os.Stdout,
+	defer folder.Close()
+	files, err := folder.ReadDir(-1)
+	if err != nil {
+		log.Fatal(err)
 	}
-	err := errors.New("a complex message")
-	s.Logf("Log %s like this", err)
-	// Output:
-	// Log a complex message like this
+	return len(files)
 }
 
-func ExampleWithInput() {
-	shellspy.NewSpySession(shellspy.WithInput(os.Stdin))
+type ErrConn struct {
+	io.Reader
 }
 
-func ExampleWithOutput() {
-	shellspy.NewSpySession(shellspy.WithOutput(os.Stdout))
-}
-
-func ExampleWithTranscript() {
-	// To see the transcript in the terminal, you might want to use [os.Stdout]
-	shellspy.NewSpySession(shellspy.WithTranscript(os.Stdout))
-
-	// Alternatively you might want to direct it to an [io.Writer]
-	buf := bytes.NewBuffer(nil)
-	shellspy.NewSpySession(shellspy.WithTranscript(buf))
-}
-
-func ExampleWithConnection() {
-	conn, _ := net.Dial("tcp", "localhost:8080")
-	shellspy.NewSpySession(shellspy.WithConnection(conn))
+func (e ErrConn) Write(p []byte) (n int, err error) {
+	return 0, nil
 }
