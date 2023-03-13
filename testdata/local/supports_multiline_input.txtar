@@ -13,6 +13,7 @@ $ what
 $ who
 $ how
 $ Goodbye!
+Transcript saved to transcript.txt
 -- expected.transcript --
 $ echo what
 what
