@@ -30,18 +30,18 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 }
 
 type Server struct {
-	Address      string
-	Password     string
-	Logger       io.Writer
+	Address             string
+	Password            string
+	Logger              io.Writer
 	TranscriptDirectory string
 }
 
 // NewServer is a convenience wrapper for the [Server] struct with sensible defaults.
 func NewServer(addr, password, transcriptDirectory string) *Server {
 	return &Server{
-		Logger:       os.Stderr,
-		Password:     password,
-		Address:      addr,
+		Logger:              os.Stderr,
+		Password:            password,
+		Address:             addr,
 		TranscriptDirectory: transcriptDirectory,
 	}
 }

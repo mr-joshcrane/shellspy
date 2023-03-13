@@ -429,10 +429,24 @@ func ExampleServer_Logf() {
 	// Log a complex message like this
 }
 
-func ExampleWithInput() {}
+func ExampleWithInput() {
+	shellspy.NewSpySession(shellspy.WithInput(os.Stdin))
+}
 
-func ExampleWithOutput() {}
+func ExampleWithOutput() {
+	shellspy.NewSpySession(shellspy.WithOutput(os.Stdout))
+}
 
-func ExampleWithTranscript() {}
+func ExampleWithTranscript() {
+	// To see the transcript in the terminal, you might want to use [os.Stdout]
+	shellspy.NewSpySession(shellspy.WithTranscript(os.Stdout))
 
-func ExampleWithConnection() {}
+	// Alternatively you might want to direct it to an [io.Writer]
+	buf := bytes.NewBuffer(nil)
+	shellspy.NewSpySession(shellspy.WithTranscript(buf))
+}
+
+func ExampleWithConnection() {
+	conn, _ := net.Dial("tcp", "localhost:8080")
+	shellspy.NewSpySession(shellspy.WithConnection(conn))
+}
