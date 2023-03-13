@@ -36,5 +36,5 @@ mySecurePassword
 Welcome to the remote shell!
 $
 ```
-Transcript of sessions are stored on disk to `transcript.txt`
 
+Transcript of sessions are stored on disk to `transcript.txt`

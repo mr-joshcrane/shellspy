@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"time"
 
 	"bitbucket.org/creachadair/shell"
 )
@@ -29,17 +30,19 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 }
 
 type Server struct {
-	Address  string
-	Password string
-	Logger   io.Writer
+	Address      string
+	Password     string
+	Logger       io.Writer
+	TranscriptDirectory string
 }
 
 // NewServer is a convenience wrapper for the [Server] struct with sensible defaults.
-func NewServer(addr, password string) *Server {
+func NewServer(addr, password, transcriptDirectory string) *Server {
 	return &Server{
-		Logger:   os.Stderr,
-		Password: password,
-		Address:  addr,
+		Logger:       os.Stderr,
+		Password:     password,
+		Address:      addr,
+		TranscriptDirectory: transcriptDirectory,
 	}
 }
 
@@ -58,7 +61,7 @@ func (s *Server) ListenAndServe() error {
 		conn, err := listener.Accept()
 		if err != nil {
 			s.Log(err)
-			return fmt.Errorf("Connection error: %w", err)
+			return fmt.Errorf("connection error: %w", err)
 		}
 		s.Logf("Accepting connection from %s\n", conn.RemoteAddr())
 		go s.handle(conn)
@@ -85,16 +88,25 @@ func (s *Server) Auth(conn io.ReadWriter) bool {
 // handle is a method on server that takes a [net.Conn],
 // Provides an [Auth] challenge, and initiates a [session] on
 // successful login. Will not create a [session] on failed [Auth] challenge.
-func (s *Server) handle(conn net.Conn) {
+var Timestamp = time.Now().UnixNano
+
+func (s Server) handle(conn net.Conn) {
 	defer conn.Close()
 	if !s.Auth(conn) {
 		s.Logf("FAILED LOGIN from %s\n", conn.RemoteAddr())
 		return
 	}
 	s.Logf("SUCCESSFUL LOGIN from %s\n", conn.RemoteAddr())
-
-	session := NewSpySession(WithConnection(conn))
-	err := session.Start()
+	timestamp := fmt.Sprint(Timestamp())
+	filename := fmt.Sprintf("%s/%s.txt", s.TranscriptDirectory, timestamp)
+	file, err := os.Create(filename)
+	if err != nil {
+		s.Log(err)
+		return
+	}
+	s.Logf("Transcript for new session available at %s\n", filename)
+	session := NewSpySession(WithConnection(conn), WithTranscript(file))
+	err = session.Start()
 	if err != nil {
 		s.Log(err)
 		return
@@ -196,8 +208,8 @@ func (s session) Start() error {
 
 // ListenAndServe starts listening on the supplied port.
 // It does not return until the server is shutdown.
-func ListenAndServe(addr string, serverPassword string) error {
-	s := NewServer(addr, serverPassword)
+func ListenAndServe(addr, serverPassword, logdir string) error {
+	s := NewServer(addr, serverPassword, logdir)
 	return s.ListenAndServe()
 }
 
@@ -207,9 +219,13 @@ func LocalInstance() int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	session := NewSpySession()
-	session.transcript = newFile
-	session.Start()
+	defer newFile.Close()
+	session := NewSpySession(WithTranscript(newFile))
+	err = session.Start()
+	if err != nil {
+		return 1
+	}
+	fmt.Fprintln(session.output, "Transcript saved to transcript.txt")
 	return 0
 }
 
@@ -226,11 +242,44 @@ func ServerInstance() int {
 		fmt.Fprintln(os.Stderr, "PASSWORD environment variable must be set")
 		return 1
 	}
-
+	LOG_DIR := os.Getenv("LOG_DIR")
+	if LOG_DIR == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		LOG_DIR = fmt.Sprintf("%s/transcripts", cwd)
+		fmt.Fprintf(os.Stdout, "LOG_DIR environment variable not set, defaulting to %s\n", LOG_DIR)
+	}
+	err := createDirectoryIfNotExists(LOG_DIR)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	fmt.Println("Starting shellspy on port", PORT)
-	if err := ListenAndServe(fmt.Sprintf("0.0.0.0:%s", PORT), PASSWORD); err != nil && err != ErrServerClosed {
+	if err := ListenAndServe(fmt.Sprintf("0.0.0.0:%s", PORT), PASSWORD, LOG_DIR); err != nil && err != ErrServerClosed {
 		fmt.Fprint(os.Stderr, err)
 		return 1
 	}
 	return 0
+}
+
+func createDirectoryIfNotExists(path string) error {
+	dir, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = os.Mkdir(path, 0755)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+		if !dir.IsDir() {
+			return fmt.Errorf("path %s is not a directory", path)
+		}
+	}
+	return nil
 }
