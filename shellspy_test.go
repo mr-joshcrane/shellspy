@@ -367,24 +367,37 @@ func supplyPassword(t *testing.T, conn net.Conn, password string) {
 	writeLine(t, conn, password)
 }
 
-func setupRemoteServer(t *testing.T, password string, logger io.Writer) (addr, tempdir string) {
-	t.Helper()
+func getFreeListenerAddress(t *testing.T) (addr string, err error) {
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	err = listener.Close()
 	if err != nil {
+		return "", err
+	}
+	for i := 0; i < 10; i++ {
+		_, err := net.Dial("tcp", listener.Addr().String())
+		if err != nil {
+			return listener.Addr().String(), nil
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return "", fmt.Errorf("listener did not close in a timely fashion")
+}
+
+func setupRemoteServer(t *testing.T, password string, logger io.Writer) (addr, tempdir string) {
+	t.Helper()
+	addr, err := getFreeListenerAddress(t)
+	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(50 * time.Millisecond)
-	addr = listener.Addr().String()
 	tempDir := t.TempDir()
 	go func() {
 		s := shellspy.Server{
-			Address:  addr,
-			Password: password,
-			Logger:   logger,
+			Address:             addr,
+			Password:            password,
+			Logger:              logger,
 			TranscriptDirectory: tempDir,
 		}
 		err := s.ListenAndServe()
