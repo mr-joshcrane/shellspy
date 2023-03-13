@@ -84,12 +84,11 @@ func (s *Server) Auth(conn io.ReadWriter) bool {
 	fmt.Fprintln(conn, "Incorrect Password: Closing connection")
 	return false
 }
+var Timestamp = time.Now().UnixNano
 
 // handle is a method on server that takes a [net.Conn],
 // Provides an [Auth] challenge, and initiates a [session] on
 // successful login. Will not create a [session] on failed [Auth] challenge.
-var Timestamp = time.Now().UnixNano
-
 func (s Server) handle(conn net.Conn) {
 	defer conn.Close()
 	if !s.Auth(conn) {
