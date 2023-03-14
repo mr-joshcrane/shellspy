@@ -1,0 +1,7 @@
+exec touch transcripts
+
+env PORT=3334
+env PASSWORD=1234
+
+! exec server
+stderr 'not a directory'

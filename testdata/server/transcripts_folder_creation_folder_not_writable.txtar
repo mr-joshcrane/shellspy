@@ -1,0 +1,13 @@
+mkdir transcripts
+chmod 444 transcripts
+
+env PORT=3334
+env PASSWORD=1234
+
+! exec server &
+exec sleep 0.2
+exec sh -c 'echo 1234 | nc -w 1 localhost 3334'
+wait
+stderr 'permission denied'
+stop
+

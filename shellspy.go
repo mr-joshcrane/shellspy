@@ -107,7 +107,7 @@ func (s *Server) handle(conn net.Conn) {
 	file, err := os.Create(filename)
 	if err != nil {
 		s.Log(err)
-		return
+		panic(err)
 	}
 	s.Logf("Transcript for new session available at %s\n", filename)
 	session := NewSpySession(WithConnection(conn), WithTranscript(file))
