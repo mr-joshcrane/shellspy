@@ -1,6 +1,8 @@
 stdin commands
 exec local
 cmp stdout expected.stdout
+exec cat transcript.txt
+exec cat expected.transcript
 cmp transcript.txt expected.transcript
 
 -- commands --
@@ -21,3 +23,4 @@ $ echo who
 who
 $ echo how
 how
+$ 

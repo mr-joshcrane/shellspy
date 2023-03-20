@@ -22,7 +22,7 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 		return nil, fmt.Errorf("unbalanced quotes or backslashes in [%s]", s)
 	}
 	if len(commands) == 0 {
-		return nil, fmt.Errorf("")
+		return nil, nil
 	}
 	path := commands[0]
 	args := commands[1:]
@@ -34,7 +34,7 @@ type Server struct {
 	Password            string
 	Logger              io.Writer
 	TranscriptDirectory string
-	transcriptCounter   uint64
+	TranscriptCounter   atomic.Uint64
 }
 
 // NewServer is a convenience wrapper for the [Server] struct with sensible defaults.
@@ -44,14 +44,8 @@ func NewServer(addr, password, transcriptDirectory string) *Server {
 		Password:            password,
 		Address:             addr,
 		TranscriptDirectory: transcriptDirectory,
-		transcriptCounter:   0,
+		TranscriptCounter:   atomic.Uint64{},
 	}
-}
-
-// GetTranscriptNumber is a goroutine safe method
-// for incrementing then retriving the current transcript number.
-func (s *Server) GetTranscriptNumber() uint64 {
-	return atomic.AddUint64(&s.transcriptCounter, 1)
 }
 
 // ListenAndServe listens on the provided address and starts a goroutine
@@ -103,11 +97,12 @@ func (s *Server) handle(conn net.Conn) {
 		return
 	}
 	s.Logf("SUCCESSFUL LOGIN from %s\n", conn.RemoteAddr())
-	transcriptLogName := fmt.Sprint(s.GetTranscriptNumber())
+	transcriptLogName := fmt.Sprint(s.TranscriptCounter.Add(1))
 	filename := fmt.Sprintf("%s/transcript-%s.txt", s.TranscriptDirectory, transcriptLogName)
 	file, err := os.Create(filename)
 	if err != nil {
 		s.Log(err)
+		//justification
 		panic(err)
 	}
 	s.Logf("Transcript for new session available at %s\n", filename)
@@ -130,9 +125,10 @@ func (s *Server) Logf(str string, args ...any) {
 }
 
 type session struct {
-	input      io.Reader
-	output     io.Writer
-	transcript io.Writer
+	input          io.Reader
+	terminal       io.Writer
+	transcript     io.Writer
+	combinedOutput io.Writer
 }
 
 type SessionOption func(*session) *session
@@ -145,7 +141,7 @@ func WithInput(input io.Reader) SessionOption {
 }
 func WithOutput(output io.Writer) SessionOption {
 	return func(s *session) *session {
-		s.output = output
+		s.terminal = output
 		return s
 	}
 }
@@ -160,7 +156,7 @@ func WithTranscript(transcript io.Writer) SessionOption {
 func WithConnection(conn net.Conn) SessionOption {
 	return func(s *session) *session {
 		s.input = conn
-		s.output = conn
+		s.terminal = conn
 		return s
 	}
 }
@@ -169,46 +165,53 @@ func WithConnection(conn net.Conn) SessionOption {
 func NewSpySession(opts ...SessionOption) *session {
 	s := &session{
 		input:      os.Stdin,
-		output:     os.Stdout,
+		terminal:   os.Stdout,
 		transcript: io.Discard,
 	}
 	for _, opt := range opts {
 		opt(s)
 	}
+	s.combinedOutput = io.MultiWriter(s.terminal, s.transcript)
 	return s
+}
+
+func (s session) printPromptToCombinedOutput() {
+	fmt.Fprint(s.combinedOutput, "$ ")
 }
 
 // Start reads from the [session] input
 // and write to the [session] output. It will also
 // write to the [session] transcript.
 func (s session) Start() error {
-	fmt.Fprintln(s.output, "Welcome to the remote shell!")
-	w := io.MultiWriter(s.output, s.transcript)
-	fmt.Fprint(s.output, "$ ")
+	fmt.Fprintln(s.terminal, "Welcome to the remote shell!")
+	s.printPromptToCombinedOutput()
 	scan := bufio.NewScanner(s.input)
 
 	for scan.Scan() {
 		line := scan.Text()
+		fmt.Fprintf(s.transcript, "%s\n", line)
 		if line == "exit" {
-			fmt.Fprintf(s.transcript, "exit\n")
 			break
 		}
-		fmt.Fprintf(s.transcript, "$ %s\n", line)
 		cmd, err := CommandFromString(line)
 		if err != nil {
-			fmt.Fprintln(w, err)
-			fmt.Fprint(w, "$ ")
+			fmt.Fprintln(s.combinedOutput, err)
+			s.printPromptToCombinedOutput()
 			continue
 		}
-		cmd.Stdout = w
-		cmd.Stderr = w
+		if cmd == nil {
+			continue
+		}
+		cmd.Stdout = s.combinedOutput
+		cmd.Stderr = s.combinedOutput
 		err = cmd.Run()
 		if err != nil {
-			fmt.Fprintln(w, err)
+			fmt.Fprintln(s.combinedOutput, err)
 		}
-		fmt.Fprint(s.output, "$ ")
+		s.printPromptToCombinedOutput()
 	}
-	fmt.Fprintln(s.output, "Goodbye!")
+	fmt.Fprintln(s.transcript)
+	fmt.Fprintln(s.terminal, "Goodbye!")
 	return scan.Err()
 }
 
@@ -231,7 +234,7 @@ func LocalInstance() int {
 	if err != nil {
 		return 1
 	}
-	fmt.Fprintln(session.output, "Transcript saved to transcript.txt")
+	fmt.Fprintln(session.terminal, "Transcript saved to transcript.txt")
 	return 0
 }
 

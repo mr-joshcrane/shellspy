@@ -71,11 +71,14 @@ func TestCommandFromString_(t *testing.T) {
 	}
 }
 
-func TestCommandFromString_WithEmptyStringReturnsError(t *testing.T) {
+func TestCommandFromString_WithEmptyStringReturnsNeitherCmdNorError(t *testing.T) {
 	t.Parallel()
-	_, err := shellspy.CommandFromString("")
-	if err == nil {
-		t.Fatal(err)
+	cmd, err := shellspy.CommandFromString("")
+	if cmd != nil {
+		t.Fatalf("command was %v", cmd)
+	}
+	if err != nil {
+		t.Fatalf("error was %v", err)
 	}
 }
 
@@ -120,10 +123,10 @@ func TestSpySession_PrintsErrorsForInvalidCommands(t *testing.T) {
 	input := strings.NewReader("'''\n\n")
 	buf := &bytes.Buffer{}
 	shellspy.NewSpySession(shellspy.WithInput(input), shellspy.WithOutput(buf)).Start()
-	want := "$ unbalanced quotes or backslashes in [''']\n$ \n$ "
+	want := "$ unbalanced quotes or backslashes in [''']\n$ "
 	got := buf.String()
 	if !strings.Contains(got, want) {
-		t.Fatalf("wanted %q, got %q", want, got)
+		t.Fatalf("want %q should be substring of got %q", want, got)
 	}
 }
 
@@ -139,6 +142,7 @@ $ echo two
 two
 $ echo three
 three
+$ 
 `
 	got := buf.String()
 	if want != got {
