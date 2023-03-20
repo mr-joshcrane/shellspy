@@ -142,8 +142,7 @@ $ echo two
 two
 $ echo three
 three
-$ 
-`
+$ `
 	got := buf.String()
 	if want != got {
 		t.Fatal(cmp.Diff(want, got))

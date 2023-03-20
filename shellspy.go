@@ -179,11 +179,15 @@ func (s session) printPromptToCombinedOutput() {
 	fmt.Fprint(s.combinedOutput, "$ ")
 }
 
+func (s session) printMessageToUser(msg string) {
+	fmt.Fprintln(s.terminal, msg)
+}
+
 // Start reads from the [session] input
 // and write to the [session] output. It will also
 // write to the [session] transcript.
 func (s session) Start() error {
-	fmt.Fprintln(s.terminal, "Welcome to the remote shell!")
+	s.printMessageToUser("Welcome to the remote shell!")
 	s.printPromptToCombinedOutput()
 	scan := bufio.NewScanner(s.input)
 
@@ -210,8 +214,7 @@ func (s session) Start() error {
 		}
 		s.printPromptToCombinedOutput()
 	}
-	fmt.Fprintln(s.transcript)
-	fmt.Fprintln(s.terminal, "Goodbye!")
+	s.printMessageToUser("Goodbye!")
 	return scan.Err()
 }
 
