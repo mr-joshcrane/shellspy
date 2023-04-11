@@ -13,10 +13,20 @@ import (
 	"bitbucket.org/creachadair/shell"
 )
 
+type CommandOption func(*exec.Cmd) *exec.Cmd
+
+func WithCombinedStdErrStdOut(combinedOutput io.Writer) CommandOption {
+	return func(c *exec.Cmd) *exec.Cmd {
+		c.Stderr = combinedOutput
+		c.Stdout = combinedOutput
+		return c
+	}
+}
+
 // CommandFromString takes a string and converts it into a
 // pointer to a [exec.Cmd] struct. It will return an error if
 // there are unbalanced quotes or backslashes in the string.
-func CommandFromString(s string) (*exec.Cmd, error) {
+func CommandFromString(s string, opts ...CommandOption) (*exec.Cmd, error) {
 	commands, ok := shell.Split(s)
 	if !ok {
 		return nil, fmt.Errorf("unbalanced quotes or backslashes in [%s]", s)
@@ -26,7 +36,11 @@ func CommandFromString(s string) (*exec.Cmd, error) {
 	}
 	path := commands[0]
 	args := commands[1:]
-	return exec.Command(path, args...), nil
+	cmd := exec.Command(path, args...)
+	for _, opt := range opts {
+		opt(cmd)
+	}
+	return cmd, nil
 }
 
 type Server struct {
@@ -190,32 +204,37 @@ func (s session) Start() error {
 	s.printMessageToUser("Welcome to the remote shell!")
 	s.printPromptToCombinedOutput()
 	scan := bufio.NewScanner(s.input)
-
 	for scan.Scan() {
 		line := scan.Text()
-		fmt.Fprintf(s.transcript, "%s\n", line)
-		if line == "exit" {
+		err := s.processLine(line)
+		if err == io.EOF {
 			break
 		}
-		cmd, err := CommandFromString(line)
-		if err != nil {
-			fmt.Fprintln(s.combinedOutput, err)
-			s.printPromptToCombinedOutput()
-			continue
-		}
-		if cmd == nil {
-			continue
-		}
-		cmd.Stdout = s.combinedOutput
-		cmd.Stderr = s.combinedOutput
-		err = cmd.Run()
-		if err != nil {
-			fmt.Fprintln(s.combinedOutput, err)
-		}
-		s.printPromptToCombinedOutput()
 	}
 	s.printMessageToUser("Goodbye!")
 	return scan.Err()
+}
+
+func (s *session) processLine(line string) error {
+	fmt.Fprintf(s.transcript, "%s\n", line)
+	if line == "exit" {
+		return io.EOF
+	}
+	cmd, err := CommandFromString(line, WithCombinedStdErrStdOut(s.combinedOutput))
+	if err != nil {
+		fmt.Fprintln(s.combinedOutput, err)
+		s.printPromptToCombinedOutput()
+		return nil
+	}
+	if cmd == nil {
+		return nil
+	}
+	err = cmd.Run()
+	if err != nil {
+		fmt.Fprintln(s.combinedOutput, err)
+	}
+	s.printPromptToCombinedOutput()
+	return nil
 }
 
 // ListenAndServe starts listening on the supplied port.
