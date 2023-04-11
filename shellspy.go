@@ -220,8 +220,8 @@ func (s session) Start() error {
 
 // ListenAndServe starts listening on the supplied port.
 // It does not return until the server is shutdown.
-func ListenAndServe(addr, serverPassword, logdir string) error {
-	s := NewServer(addr, serverPassword, logdir)
+func ListenAndServe(addr, serverPassword, logDir string) error {
+	s := NewServer(addr, serverPassword, logDir)
 	return s.ListenAndServe()
 }
 
