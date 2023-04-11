@@ -1,3 +1,5 @@
+# Test assumes that netcat is installed on the machine as a dependency
+[!exec:nc] skip
 env PORT=3333
 env PASSWORD='password'
 
