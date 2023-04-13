@@ -5,3 +5,4 @@ env PASSWORD=1234
 
 ! exec server
 stderr 'not a directory'
+

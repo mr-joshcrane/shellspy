@@ -78,21 +78,15 @@ func (s *Server) handle(conn net.Conn) {
 		return
 	}
 	s.Logf("SUCCESSFUL LOGIN from %s\n", conn.RemoteAddr())
+	fmt.Fprintln(conn, "Welcome to the remote shell!")
 	transcriptLogName := fmt.Sprint(s.TranscriptCounter.Add(1))
-	filename := fmt.Sprintf("%s/transcript-%s.txt", s.TranscriptDirectory, transcriptLogName)
-	file, err := os.Create(filename)
+	pathname := fmt.Sprintf("%s/transcript-%s.txt", s.TranscriptDirectory, transcriptLogName)
+	session := NewSpySession(WithConnection(conn), WithTranscriptPath(pathname), WithServerLogger(&s.Logger))
+	err := session.Start()
 	if err != nil {
 		s.Log(err)
-		//justification
-		panic(err)
 	}
-	s.Logf("Transcript for new session available at %s\n", filename)
-	session := NewSpySession(WithConnection(conn), WithTranscript(file))
-	err = session.Start()
-	if err != nil {
-		s.Log(err)
-		return
-	}
+	fmt.Fprintln(conn, "Goodbye!")
 }
 
 // Log writes args to the [Server.Logger].

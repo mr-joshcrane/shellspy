@@ -1,21 +1,22 @@
+exec truncate -s -1 expected.stdout ## Needed to get around testscript bug
+exec truncate -s -1 expected.transcript ## Needed to get around testscript bug
+
+
 stdin commands
 exec local
 cmp stdout expected.stdout
-exec truncate -s -1 expected.transcript ## Needed to get around testscript bug
-
 cmp transcript.txt expected.transcript
 
 -- commands --
 echo what
 echo who
 echo how
+exit
 -- expected.stdout --
-Welcome to the remote shell!
 $ what
 $ who
 $ how
-$ Goodbye!
-Transcript saved to transcript.txt
+$ 
 -- expected.transcript --
 $ echo what
 what
@@ -23,4 +24,5 @@ $ echo who
 who
 $ echo how
 how
-$ 
+$ exit
+

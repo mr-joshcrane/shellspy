@@ -161,19 +161,19 @@ func TestSpySession_TerminatesOnExitCommand(t *testing.T) {
 	}
 }
 
-func TestRemoteShell_DisplaysWelcomeOnConnectAndGoodbyeMessageOnExit(t *testing.T) {
+func TestRemoteShell_DisplaysTerminalPrompt(t *testing.T) {
 	t.Parallel()
 	input := strings.NewReader("exit\n")
 	buf := &bytes.Buffer{}
-	shellspy.NewSpySession(shellspy.WithInput(input), shellspy.WithOutput(buf)).Start()
-	want := "Welcome to the remote shell!\n$ Goodbye!\n"
+	shellspy.NewSpySession(shellspy.WithInput(input), shellspy.WithOutput(buf), shellspy.WithTranscript(io.Discard)).Start()
+	want := "$ "
 	got := buf.String()
 	if want != got {
 		t.Fatalf(cmp.Diff(want, got))
 	}
 }
 
-func TestRemoteShell_AuthClosesSessionOnBadRead(t *testing.T) {
+func TestRemoteShell_AuthClosesSessionOnWrongPassword(t *testing.T) {
 	t.Parallel()
 	addr, _ := setupRemoteServer(t, "correctPassword", io.Discard)
 	conn := setupConnection(t, addr)
@@ -181,14 +181,14 @@ func TestRemoteShell_AuthClosesSessionOnBadRead(t *testing.T) {
 	if line != "Enter Password: " {
 		t.Fatalf("wanted 'Enter Password: ', got %s", line)
 	}
-	writeLine(t, conn, "correctPassword")
+	writeLine(t, conn, "wrongPassword")
 	line = readLine(t, conn)
-	if line != "Welcome to the remote shell!" {
-		t.Fatalf("wanted 'Welcome to the remote shell!', got %s", line)
+	if line != "Incorrect Password: Closing connection" {
+		t.Fatalf("wanted 'Incorrect Password: Closing connection', got %s", line)
 	}
 	err := waitForBrokenPipe(conn)
-	if err != nil {
-		t.Fatalf("expected no error, but got %q", err)
+	if !errors.Is(err, syscall.EPIPE) {
+		t.Fatalf("expected error, but got %q", err)
 	}
 }
 func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
@@ -300,6 +300,32 @@ func TestServerSideTranscriptsAreOnePerSuccessfulConnection(t *testing.T) {
 	}
 }
 
+func TestServerLogsErrorWhenTranscriptUnavailable(t *testing.T) {
+	buf := &bytes.Buffer{}
+
+	addr, tempdir := setupRemoteServer(t, "correctPassword", buf)
+	os.Chmod(tempdir, 0o444)
+	c1 := setupConnection(t, addr)
+
+	fmt.Fprintln(c1, "correctPassword")
+
+	time.Sleep(50 * time.Millisecond)
+	got := strings.Split(buf.String(), "\n")
+	got = got[0 : len(got)-1]
+
+	want := []string{
+		fmt.Sprintf("Starting listener on %s", addr),
+		"Listener created.",
+		fmt.Sprintf("Accepting connection from %s", c1.LocalAddr()),
+		fmt.Sprintf("SUCCESSFUL LOGIN from %s", c1.LocalAddr()),
+		fmt.Sprintf("open %s/transcript-%d.txt: permission denied", tempdir, 1),
+	}
+	less := func(a, b string) bool { return a < b }
+	if !cmp.Equal(want, got, cmpopts.SortSlices(less)) {
+		t.Fatalf(cmp.Diff(want, got))
+	}
+}
+
 func ExampleServer_Log() {
 	s := shellspy.Server{
 		Logger: os.Stdout,
@@ -370,7 +396,7 @@ func writeLine(t *testing.T, conn net.Conn, line string) {
 func waitForBrokenPipe(conn net.Conn) error {
 	var err error
 	for i := 0; i < 10; i++ {
-		_, err = fmt.Fprintf(conn, "echo ':Is pipe broken?'\n")
+		_, err = fmt.Fprintf(conn, "echo 'Is pipe broken?'\n")
 		time.Sleep(50 * time.Millisecond)
 	}
 	return err

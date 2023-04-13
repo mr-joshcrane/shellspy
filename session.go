@@ -32,6 +32,8 @@ type session struct {
 	terminal       io.Writer
 	transcript     io.Writer
 	combinedOutput io.Writer
+	transcriptPath string
+	serverLogger  *io.Writer
 }
 
 // Convenience wrapped around Session with default arguments.
@@ -39,12 +41,10 @@ func NewSpySession(opts ...SessionOption) *session {
 	s := &session{
 		input:      os.Stdin,
 		terminal:   os.Stdout,
-		transcript: io.Discard,
 	}
 	for _, opt := range opts {
 		opt(s)
 	}
-	s.combinedOutput = io.MultiWriter(s.terminal, s.transcript)
 	return s
 }
 
@@ -70,10 +70,24 @@ func WithTranscript(transcript io.Writer) SessionOption {
 	}
 }
 
+func WithTranscriptPath(path string) SessionOption {
+	return func(s *session) *session {
+		s.transcriptPath = path
+		return s
+	}
+}
+
 func WithConnection(conn net.Conn) SessionOption {
 	return func(s *session) *session {
 		s.input = conn
 		s.terminal = conn
+		return s
+	}
+}
+
+func WithServerLogger(serverLogger *io.Writer) SessionOption {
+	return func(s *session) *session {
+		s.serverLogger = serverLogger
 		return s
 	}
 }
@@ -90,7 +104,27 @@ func (s session) printMessageToUser(msg string) {
 // and write to the [session] output. It will also
 // write to the [session] transcript.
 func (s session) Start() error {
-	s.printMessageToUser("Welcome to the remote shell!")
+	if s.transcript == nil {
+		s.transcript = io.Discard
+		if s.transcriptPath == "" {
+			s.printMessageToUser("No transcript requested")
+		} else {
+			transcript, err := os.Create(s.transcriptPath)
+			if err != nil {
+				s.printMessageToUser("WARNING No transcript will be available for this session!")
+				if s.serverLogger != nil {
+					fmt.Fprintln(*s.serverLogger, err)
+				}
+
+			} else {
+				s.transcript = transcript
+				if s.serverLogger != nil {
+					fmt.Fprintf(*s.serverLogger, "Transcript for new session available at %s\n", s.transcriptPath)
+				}
+			}
+		}
+	}
+	s.combinedOutput = io.MultiWriter(s.terminal, s.transcript)
 	s.printPromptToCombinedOutput()
 	scan := bufio.NewScanner(s.input)
 	for scan.Scan() {
@@ -100,7 +134,6 @@ func (s session) Start() error {
 			break
 		}
 	}
-	s.printMessageToUser("Goodbye!")
 	return scan.Err()
 }
 
@@ -129,17 +162,10 @@ func (s *session) processLine(line string) error {
 }
 
 func LocalInstance() int {
-	newFile, err := os.Create("transcript.txt")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
-	defer newFile.Close()
-	session := NewSpySession(WithTranscript(newFile))
-	err = session.Start()
+	session := NewSpySession(WithTranscriptPath("transcript.txt"))
+	err := session.Start()
 	if err != nil {
 		return 1
 	}
-	fmt.Fprintln(session.terminal, "Transcript saved to transcript.txt")
 	return 0
 }
