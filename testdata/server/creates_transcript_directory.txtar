@@ -1,0 +1,9 @@
+env PORT=3333
+env PASSWORD='password'
+env LOG_DIR='pathThatDoesntExist'
+
+! exec server &
+exec sleep 0.2
+
+exists $LOG_DIR
+stop

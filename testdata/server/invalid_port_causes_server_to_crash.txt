@@ -1,0 +1,6 @@
+env PORT=notAPort
+env PASSWORD='password'
+
+! exec server
+stdout 'Starting shellspy on port'
+stderr 'unknown port'

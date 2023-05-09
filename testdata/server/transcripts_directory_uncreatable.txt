@@ -1,0 +1,7 @@
+env PORT=3334
+env PASSWORD=1234
+env LOG_DIR='parent/that/doesnt/exist'
+
+! exec server
+
+stderr 'no such file or directory'

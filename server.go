@@ -21,7 +21,7 @@ type Server struct {
 // NewServer is a convenience wrapper for the [Server] struct with sensible defaults.
 func NewServer(addr, password, transcriptDirectory string) *Server {
 	return &Server{
-		Logger:              os.Stderr,
+		Logger:              os.Stdout,
 		Password:            password,
 		Address:             addr,
 		TranscriptDirectory: transcriptDirectory,
@@ -81,11 +81,8 @@ func (s *Server) handle(conn net.Conn) {
 	fmt.Fprintln(conn, "Welcome to the remote shell!")
 	transcriptLogName := fmt.Sprint(s.TranscriptCounter.Add(1))
 	pathname := fmt.Sprintf("%s/transcript-%s.txt", s.TranscriptDirectory, transcriptLogName)
-	session := NewSpySession(WithConnection(conn), WithTranscriptPath(pathname), WithServerLogger(&s.Logger))
-	err := session.Start()
-	if err != nil {
-		s.Log(err)
-	}
+	session := NewSpySession(WithConnection(conn), WithTranscriptPath(pathname), WithServerLogger(s.Logger))
+	session.Start()
 	fmt.Fprintln(conn, "Goodbye!")
 }
 

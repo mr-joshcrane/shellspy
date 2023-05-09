@@ -13,6 +13,7 @@ echo who
 echo how
 exit
 -- expected.stdout --
+Transcript for new session available at transcript.txt
 $ what
 $ who
 $ how

@@ -150,8 +150,8 @@ $ `
 }
 func TestSpySession_TerminatesOnExitCommand(t *testing.T) {
 	t.Parallel()
-	addr, _ := setupRemoteServer(t, "password", io.Discard)
-	conn := setupConnection(t, addr)
+	s := setupRemoteServer(t, "password", io.Discard)
+	conn := setupConnection(t, s.Address)
 	supplyPassword(t, conn, "password")
 	time.Sleep(100 * time.Millisecond)
 	writeLine(t, conn, "exit")
@@ -175,8 +175,8 @@ func TestRemoteShell_DisplaysTerminalPrompt(t *testing.T) {
 
 func TestRemoteShell_AuthClosesSessionOnWrongPassword(t *testing.T) {
 	t.Parallel()
-	addr, _ := setupRemoteServer(t, "correctPassword", io.Discard)
-	conn := setupConnection(t, addr)
+	s := setupRemoteServer(t, "correctPassword", io.Discard)
+	conn := setupConnection(t, s.Address)
 	line := readLine(t, conn)
 	if line != "Enter Password: " {
 		t.Fatalf("wanted 'Enter Password: ', got %s", line)
@@ -193,8 +193,8 @@ func TestRemoteShell_AuthClosesSessionOnWrongPassword(t *testing.T) {
 }
 func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
 	t.Parallel()
-	addr, _ := setupRemoteServer(t, "correctPassword", io.Discard)
-	conn := setupConnection(t, addr)
+	s := setupRemoteServer(t, "correctPassword", io.Discard)
+	conn := setupConnection(t, s.Address)
 	line := readLine(t, conn)
 	if line != "Enter Password: " {
 		t.Fatalf("wanted 'Enter Password: ', got %s", line)
@@ -213,10 +213,7 @@ func TestRemoteShell_AuthKeepsSessionAliveOnCorrectPassword(t *testing.T) {
 func TestAuthIsFalseForErrorOnRead(t *testing.T) {
 	t.Parallel()
 	conn := ErrConn{iotest.ErrReader(errors.New("faulty read"))}
-	s := shellspy.Server{
-		Password: "correctPassword",
-		Logger:   io.Discard,
-	}
+	s := setupRemoteServer(t, "correctPassword", io.Discard)
 	if s.Auth(conn) {
 		t.Fatal(true)
 	}
@@ -225,10 +222,7 @@ func TestAuthIsFalseForIncorrectPassword(t *testing.T) {
 	t.Parallel()
 	conn := &bytes.Buffer{}
 	fmt.Fprintln(conn, "incorrectPassword")
-	s := shellspy.Server{
-		Password: "correctPassword",
-		Logger:   io.Discard,
-	}
+	s := setupRemoteServer(t, "correctPassword", io.Discard)
 	if s.Auth(conn) {
 		t.Fatal(true)
 	}
@@ -238,10 +232,7 @@ func TestAuthIsTrueForCorrectPassword(t *testing.T) {
 	t.Parallel()
 	conn := &bytes.Buffer{}
 	fmt.Fprintln(conn, "correctPassword")
-	s := shellspy.Server{
-		Password: "correctPassword",
-		Logger:   io.Discard,
-	}
+	s := setupRemoteServer(t, "correctPassword", io.Discard)
 	if !s.Auth(conn) {
 		t.Fatal(false)
 	}
@@ -249,10 +240,10 @@ func TestAuthIsTrueForCorrectPassword(t *testing.T) {
 
 func TestServerSideLogging(t *testing.T) {
 	buf := &bytes.Buffer{}
-	addr, tempdir := setupRemoteServer(t, "correctPassword", buf)
-	c1 := setupConnection(t, addr)
-	c2 := setupConnection(t, addr)
-	c3 := setupConnection(t, addr)
+	s := setupRemoteServer(t, "correctPassword", buf)
+	c1 := setupConnection(t, s.Address)
+	c2 := setupConnection(t, s.Address)
+	c3 := setupConnection(t, s.Address)
 
 	fmt.Fprintln(c1, "correctPassword")
 	fmt.Fprintln(c2, "incorrectPassword")
@@ -263,7 +254,7 @@ func TestServerSideLogging(t *testing.T) {
 	got = got[0 : len(got)-1]
 
 	want := []string{
-		fmt.Sprintf("Starting listener on %s", addr),
+		fmt.Sprintf("Starting listener on %s", s.Address),
 		"Listener created.",
 		fmt.Sprintf("Accepting connection from %s", c1.LocalAddr()),
 		fmt.Sprintf("Accepting connection from %s", c2.LocalAddr()),
@@ -271,8 +262,8 @@ func TestServerSideLogging(t *testing.T) {
 		fmt.Sprintf("SUCCESSFUL LOGIN from %s", c1.LocalAddr()),
 		fmt.Sprintf("SUCCESSFUL LOGIN from %s", c3.LocalAddr()),
 		fmt.Sprintf("FAILED LOGIN from %s", c2.LocalAddr()),
-		fmt.Sprintf("Transcript for new session available at %s/transcript-%d.txt", tempdir, 1),
-		fmt.Sprintf("Transcript for new session available at %s/transcript-%d.txt", tempdir, 2),
+		fmt.Sprintf("Transcript for new session available at %s/transcript-%d.txt", s.TranscriptDirectory, 1),
+		fmt.Sprintf("Transcript for new session available at %s/transcript-%d.txt", s.TranscriptDirectory, 2),
 	}
 	less := func(a, b string) bool { return a < b }
 	if !cmp.Equal(want, got, cmpopts.SortSlices(less)) {
@@ -281,19 +272,19 @@ func TestServerSideLogging(t *testing.T) {
 }
 
 func TestServerSideTranscriptsAreOnePerSuccessfulConnection(t *testing.T) {
-	addr, tempDir := setupRemoteServer(t, "correctPassword", io.Discard)
+	s := setupRemoteServer(t, "correctPassword", io.Discard)
 
-	c1 := setupConnection(t, addr)
+	c1 := setupConnection(t, s.Address)
 	fmt.Fprintln(c1, "correctPassword")
 
-	c2 := setupConnection(t, addr)
+	c2 := setupConnection(t, s.Address)
 	fmt.Fprintln(c2, "incorrectPassword")
 
-	c3 := setupConnection(t, addr)
+	c3 := setupConnection(t, s.Address)
 	fmt.Fprintln(c3, "correctPassword")
 
 	time.Sleep(50 * time.Millisecond)
-	got := numberOfFilesInFolder(tempDir)
+	got := numberOfFilesInFolder(s.TranscriptDirectory)
 
 	if got != 2 {
 		t.Fatalf("expected 2 files in transcript folder but got %d", got)
@@ -303,9 +294,9 @@ func TestServerSideTranscriptsAreOnePerSuccessfulConnection(t *testing.T) {
 func TestServerLogsErrorWhenTranscriptUnavailable(t *testing.T) {
 	buf := &bytes.Buffer{}
 
-	addr, tempdir := setupRemoteServer(t, "correctPassword", buf)
-	os.Chmod(tempdir, 0o444)
-	c1 := setupConnection(t, addr)
+	s := setupRemoteServer(t, "correctPassword", buf)
+	os.Chmod(s.TranscriptDirectory, 0o444)
+	c1 := setupConnection(t, s.Address)
 
 	fmt.Fprintln(c1, "correctPassword")
 
@@ -314,11 +305,11 @@ func TestServerLogsErrorWhenTranscriptUnavailable(t *testing.T) {
 	got = got[0 : len(got)-1]
 
 	want := []string{
-		fmt.Sprintf("Starting listener on %s", addr),
+		fmt.Sprintf("Starting listener on %s", s.Address),
 		"Listener created.",
 		fmt.Sprintf("Accepting connection from %s", c1.LocalAddr()),
 		fmt.Sprintf("SUCCESSFUL LOGIN from %s", c1.LocalAddr()),
-		fmt.Sprintf("open %s/transcript-%d.txt: permission denied", tempdir, 1),
+		fmt.Sprintf("open %s/transcript-%d.txt: permission denied", s.TranscriptDirectory, 1),
 	}
 	less := func(a, b string) bool { return a < b }
 	if !cmp.Equal(want, got, cmpopts.SortSlices(less)) {
@@ -327,17 +318,13 @@ func TestServerLogsErrorWhenTranscriptUnavailable(t *testing.T) {
 }
 
 func ExampleServer_Log() {
-	s := shellspy.Server{
-		Logger: os.Stdout,
-	}
+	s := shellspy.NewServer("serverAddress", "password", "logDirectory")
 	s.Log("Log simple server messages like this")
 	// Output:
 	// Log simple server messages like this
 }
 func ExampleServer_Logf() {
-	s := shellspy.Server{
-		Logger: os.Stdout,
-	}
+	s := shellspy.NewServer("serverAddress", "password", "logDirectory")
 	err := errors.New("a complex message")
 	s.Logf("Log %s like this", err)
 	// Output:
@@ -425,25 +412,22 @@ func getFreeListenerAddress(t *testing.T) (addr string, err error) {
 		if err != nil {
 			return listener.Addr().String(), nil
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
 	return "", fmt.Errorf("listener did not close in a timely fashion")
 }
 
-func setupRemoteServer(t *testing.T, password string, logger io.Writer) (addr, tempdir string) {
+func setupRemoteServer(t *testing.T, password string, logger io.Writer) *shellspy.Server {
 	t.Helper()
+
 	addr, err := getFreeListenerAddress(t)
 	if err != nil {
 		t.Fatal(err)
 	}
 	tempDir := t.TempDir()
+	s := shellspy.NewServer(addr, password, tempDir)
+	s.Logger = logger
 	go func() {
-		s := shellspy.Server{
-			Address:             addr,
-			Password:            password,
-			Logger:              logger,
-			TranscriptDirectory: tempDir,
-		}
 		err := s.ListenAndServe()
 		if err != nil {
 			panic(err)
@@ -452,7 +436,7 @@ func setupRemoteServer(t *testing.T, password string, logger io.Writer) (addr, t
 			panic("expected server to block, but it exited with no error")
 		}
 	}()
-	return addr, tempDir
+	return s
 }
 
 func numberOfFilesInFolder(path string) int {
@@ -474,4 +458,15 @@ type ErrConn struct {
 
 func (e ErrConn) Write(p []byte) (n int, err error) {
 	return 0, nil
+}
+
+func FuzzXxx(f *testing.F) {
+	f.Fuzz(func(t *testing.T, input string) {
+		buf := &bytes.Buffer{}
+		reader, writer := io.Pipe()
+		s := shellspy.NewSpySession(shellspy.WithInput(reader), shellspy.WithTranscript(buf), shellspy.WithOutput(os.Stdout))
+		go s.Start()
+		fmt.Fprintln(writer, input)
+
+	})
 }

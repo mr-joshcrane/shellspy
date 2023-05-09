@@ -33,14 +33,15 @@ type session struct {
 	transcript     io.Writer
 	combinedOutput io.Writer
 	transcriptPath string
-	serverLogger  *io.Writer
+	serverLogger   io.Writer
 }
 
 // Convenience wrapped around Session with default arguments.
 func NewSpySession(opts ...SessionOption) *session {
 	s := &session{
-		input:      os.Stdin,
-		terminal:   os.Stdout,
+		input:        os.Stdin,
+		terminal:     os.Stdout,
+		serverLogger: os.Stdout,
 	}
 	for _, opt := range opts {
 		opt(s)
@@ -85,7 +86,7 @@ func WithConnection(conn net.Conn) SessionOption {
 	}
 }
 
-func WithServerLogger(serverLogger *io.Writer) SessionOption {
+func WithServerLogger(serverLogger io.Writer) SessionOption {
 	return func(s *session) *session {
 		s.serverLogger = serverLogger
 		return s
@@ -100,10 +101,14 @@ func (s session) printMessageToUser(msg string) {
 	fmt.Fprintln(s.terminal, msg)
 }
 
+func (s session) log(args ...any) {
+	fmt.Fprintln(s.serverLogger, args...)
+}
+
 // Start reads from the [session] input
 // and write to the [session] output. It will also
 // write to the [session] transcript.
-func (s session) Start() error {
+func (s session) Start() {
 	if s.transcript == nil {
 		s.transcript = io.Discard
 		if s.transcriptPath == "" {
@@ -112,15 +117,10 @@ func (s session) Start() error {
 			transcript, err := os.Create(s.transcriptPath)
 			if err != nil {
 				s.printMessageToUser("WARNING No transcript will be available for this session!")
-				if s.serverLogger != nil {
-					fmt.Fprintln(*s.serverLogger, err)
-				}
-
+				s.log(err)
 			} else {
 				s.transcript = transcript
-				if s.serverLogger != nil {
-					fmt.Fprintf(*s.serverLogger, "Transcript for new session available at %s\n", s.transcriptPath)
-				}
+				s.log("Transcript for new session available at", s.transcriptPath)
 			}
 		}
 	}
@@ -134,7 +134,9 @@ func (s session) Start() error {
 			break
 		}
 	}
-	return scan.Err()
+	if scan.Err() != nil {
+		s.log(scan.Err())
+	}
 }
 
 func (s *session) processLine(line string) error {
@@ -163,9 +165,6 @@ func (s *session) processLine(line string) error {
 
 func LocalInstance() int {
 	session := NewSpySession(WithTranscriptPath("transcript.txt"))
-	err := session.Start()
-	if err != nil {
-		return 1
-	}
+	session.Start()
 	return 0
 }
